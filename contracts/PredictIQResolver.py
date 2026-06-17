@@ -1,8 +1,7 @@
-# { "Depends": "py-genlayer:test" }
+# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 from genlayer import *
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 
 @allow_storage
@@ -16,21 +15,14 @@ class MarketResolution:
 
 
 class PredictIQResolver(gl.Contract):
+    factory_address: str
+    owner: str
     resolutions: TreeMap[u256, MarketResolution]
     resolution_ids: DynArray[u256]
-    factory_address: str
-    authorized_callers: DynArray[str]
-    owner: str
 
     def __init__(self, factory_address: str) -> None:
         self.factory_address = factory_address
         self.owner = str(gl.message.sender_address)
-        self.authorized_callers.append(str(gl.message.sender_address))
-
-    @gl.public.write
-    def add_authorized_caller(self, caller: str) -> None:
-        assert str(gl.message.sender_address) == self.owner, "Not owner"
-        self.authorized_callers.append(caller)
 
     @gl.public.write
     def resolve_market(
@@ -46,9 +38,8 @@ class PredictIQResolver(gl.Contract):
             evidence_parts = []
             for url in sources_mem:
                 try:
-                    response = gl.nondet.web.get(url)
-                    content = response.body.decode("utf-8")[:3000]
-                    evidence_parts.append(f"[{url}]\n{content}")
+                    response = gl.get_webpage(url, mode="text")
+                    evidence_parts.append(f"[{url}]\n{response[:3000]}")
                 except Exception:
                     evidence_parts.append(f"[{url}]\n(Could not fetch)")
 
@@ -64,31 +55,28 @@ EVIDENCE GATHERED:
 {evidence}
 
 INSTRUCTIONS:
-1. Carefully read the resolution criteria.
-2. Analyze the evidence gathered from the provided sources.
-3. Determine whether the event described resolves as YES or NO based strictly on the criteria.
-4. Assign a confidence score between 0.0 and 1.0 (1.0 = completely certain).
-5. If evidence is insufficient or ambiguous, still make a determination but reflect that in the confidence score.
-6. List only the URLs that were actually useful as evidence.
+Determine whether the event resolves YES or NO based strictly on the resolution criteria.
+Assign a confidence score 0.0–1.0. List only URLs that were actually useful.
 
-Respond ONLY with valid JSON in this exact format:
-{{"outcome": "YES" or "NO", "confidence": 0.0 to 1.0, "sources_used": ["url1", "url2"], "reasoning": "detailed step-by-step explanation of your determination"}}"""
+Respond ONLY with valid JSON:
+{{"outcome": "YES" or "NO", "confidence": 0.0-1.0, "sources_used": ["url1"], "reasoning": "step-by-step explanation"}}"""
 
-            result = gl.nondet.exec_prompt(prompt, response_format="json")
-            return json.dumps(result, sort_keys=True)
+            result = gl.exec_prompt(prompt)
+            parsed = json.loads(result)
+            return json.dumps(parsed, sort_keys=True)
 
         def validator_fn(leaders_result) -> bool:
             if not isinstance(leaders_result, gl.vm.Return):
                 return False
             try:
-                validator_result_raw = leader_fn()
-                validator_data = json.loads(validator_result_raw)
+                validator_raw = leader_fn()
+                validator_data = json.loads(validator_raw)
                 leader_data = json.loads(leaders_result.calldata)
                 return leader_data.get("outcome") == validator_data.get("outcome")
             except Exception:
                 return False
 
-        raw = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+        raw = gl.eq_principle_strict_eq(leader_fn)
         result = json.loads(raw)
 
         sources_array = DynArray[str]()
@@ -101,25 +89,17 @@ Respond ONLY with valid JSON in this exact format:
             confidence=str(result.get("confidence", 0.5)),
             sources=sources_array,
             reasoning=str(result.get("reasoning", "")),
-            resolved_at=datetime.now(timezone.utc).isoformat(),
+            resolved_at="resolved",
         )
         self.resolutions[market_id] = resolution
 
-        found = False
+        already_recorded = False
         for mid in self.resolution_ids:
             if int(mid) == int(market_id):
-                found = True
+                already_recorded = True
                 break
-        if not found:
+        if not already_recorded:
             self.resolution_ids.append(market_id)
-
-        # Notify factory of outcome
-        outcome_bool = result.get("outcome", "NO") == "YES"
-        gl.call_contract(
-            self.factory_address,
-            "set_market_resolved",
-            [int(market_id), outcome_bool],
-        )
 
     @gl.public.view
     def get_resolution(self, market_id: u256) -> dict:
@@ -158,4 +138,7 @@ Respond ONLY with valid JSON in this exact format:
 
     @gl.public.view
     def resolution_count(self) -> int:
-        return len(self.resolution_ids)
+        count = 0
+        for _ in self.resolution_ids:
+            count += 1
+        return count

@@ -1,7 +1,6 @@
-# { "Depends": "py-genlayer:test" }
+# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 from genlayer import *
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 
 @allow_storage
@@ -18,25 +17,35 @@ class Market:
     yes_pool: u256
     no_pool: u256
     total_volume: u256
-    resolver_address: str
     sources: DynArray[str]
     created_at: u256
 
 
+@allow_storage
+@dataclass
+class Position:
+    yes_shares: u256
+    no_shares: u256
+    yes_cost: u256
+    no_cost: u256
+    claimed: bool
+
+
 class MarketFactory(gl.Contract):
+    resolver_address: str
     markets: TreeMap[u256, Market]
     market_count: u256
+    trader_count: u256
     category_markets: TreeMap[str, DynArray[u256]]
     all_market_ids: DynArray[u256]
-    trader_set: DynArray[str]
     trader_seen: TreeMap[str, bool]
+    positions: TreeMap[str, TreeMap[u256, Position]]
+    user_market_ids: TreeMap[str, DynArray[u256]]
 
     def __init__(self, resolver_address: str) -> None:
-        self.market_count = u256(0)
         self.resolver_address = resolver_address
-
-    # workaround: store resolver address as a top-level field
-    resolver_address: str
+        self.market_count = u256(0)
+        self.trader_count = u256(0)
 
     @gl.public.write.payable
     def create_market(
@@ -49,17 +58,11 @@ class MarketFactory(gl.Contract):
     ) -> u256:
         assert len(question) >= 10, "Question too short"
         assert len(resolution_criteria) >= 20, "Resolution criteria too short"
-        assert deadline > u256(int(datetime.now(timezone.utc).timestamp())), "Deadline must be in the future"
 
-        market_id = self.market_count
-        initial_liquidity = gl.message.value
-
-        sources_stored = DynArray[str]()
-        for s in sources:
-            sources_stored.append(s)
-
+        mid = self.market_count
+        liq = gl.message.value
         market = Market(
-            id=market_id,
+            id=mid,
             creator=str(gl.message.sender_address),
             question=question,
             resolution_criteria=resolution_criteria,
@@ -67,48 +70,141 @@ class MarketFactory(gl.Contract):
             deadline=deadline,
             resolved=False,
             outcome=False,
-            yes_pool=initial_liquidity // u256(2),
-            no_pool=initial_liquidity // u256(2),
-            total_volume=initial_liquidity,
-            resolver_address=self.resolver_address,
-            sources=sources_stored,
-            created_at=u256(int(datetime.now(timezone.utc).timestamp())),
+            yes_pool=liq // u256(2),
+            no_pool=liq // u256(2),
+            total_volume=liq,
+            sources=sources,
+            created_at=u256(0),
         )
-        self.markets[market_id] = market
-        self.all_market_ids.append(market_id)
+        self.markets[mid] = market
+        self.all_market_ids.append(mid)
+        self.category_markets.get_or_insert_default(category).append(mid)
+        self.market_count = mid + u256(1)
+        return mid
 
-        cat_key = category
-        if self.category_markets.get(cat_key) is None:
-            self.category_markets[cat_key] = DynArray[u256]()
-        self.category_markets[cat_key].append(market_id)
-
-        self.market_count = self.market_count + u256(1)
-        return market_id
-
-    @gl.public.write
-    def update_market_pools(
-        self,
-        market_id: u256,
-        yes_delta: u256,
-        no_delta: u256,
-        volume_delta: u256,
-        buyer: str,
-    ) -> None:
+    @gl.public.write.payable
+    def buy_yes(self, market_id: u256) -> u256:
+        amount = gl.message.value
+        assert int(amount) > 0, "Amount must be positive"
         market = self.markets.get(market_id)
         assert market is not None, "Market not found"
-        market.yes_pool = market.yes_pool + yes_delta
-        market.no_pool = market.no_pool + no_delta
-        market.total_volume = market.total_volume + volume_delta
+        assert not market.resolved, "Market already resolved"
+
+        yes_pool = market.yes_pool
+        no_pool = market.no_pool
+        shares = self._compute_shares(amount, no_pool, yes_pool)
+
+        market.yes_pool = yes_pool + amount
+        market.total_volume = market.total_volume + amount
         self.markets[market_id] = market
 
-        if not self.trader_seen.get(buyer):
-            self.trader_set.append(buyer)
-            self.trader_seen[buyer] = True
+        buyer = str(gl.message.sender_address)
+        self._record_position_yes(buyer, market_id, shares, amount)
+        self._track_trader(buyer)
+        return shares
+
+    @gl.public.write.payable
+    def buy_no(self, market_id: u256) -> u256:
+        amount = gl.message.value
+        assert int(amount) > 0, "Amount must be positive"
+        market = self.markets.get(market_id)
+        assert market is not None, "Market not found"
+        assert not market.resolved, "Market already resolved"
+
+        yes_pool = market.yes_pool
+        no_pool = market.no_pool
+        shares = self._compute_shares(amount, yes_pool, no_pool)
+
+        market.no_pool = no_pool + amount
+        market.total_volume = market.total_volume + amount
+        self.markets[market_id] = market
+
+        buyer = str(gl.message.sender_address)
+        self._record_position_no(buyer, market_id, shares, amount)
+        self._track_trader(buyer)
+        return shares
 
     @gl.public.write
-    def set_market_resolved(
-        self, market_id: u256, outcome: bool
-    ) -> None:
+    def sell_yes(self, market_id: u256, shares: u256) -> u256:
+        seller = str(gl.message.sender_address)
+        pos = self._get_or_default_position(seller, market_id)
+        assert int(pos.yes_shares) >= int(shares), "Insufficient YES shares"
+        market = self.markets.get(market_id)
+        assert market is not None, "Market not found"
+        assert not market.resolved, "Market already resolved"
+
+        yes_pool = market.yes_pool
+        no_pool = market.no_pool
+        total = int(yes_pool) + int(no_pool)
+        proceeds = u256(int(yes_pool) * int(shares) // total) if total > 0 else u256(0)
+
+        market.yes_pool = yes_pool - proceeds
+        self.markets[market_id] = market
+        pos.yes_shares = pos.yes_shares - shares
+        self.positions[seller][market_id] = pos
+
+        if int(proceeds) > 0:
+            gl.message.send_tokens(gl.message.sender_address, int(proceeds))
+        return proceeds
+
+    @gl.public.write
+    def sell_no(self, market_id: u256, shares: u256) -> u256:
+        seller = str(gl.message.sender_address)
+        pos = self._get_or_default_position(seller, market_id)
+        assert int(pos.no_shares) >= int(shares), "Insufficient NO shares"
+        market = self.markets.get(market_id)
+        assert market is not None, "Market not found"
+        assert not market.resolved, "Market already resolved"
+
+        yes_pool = market.yes_pool
+        no_pool = market.no_pool
+        total = int(yes_pool) + int(no_pool)
+        proceeds = u256(int(no_pool) * int(shares) // total) if total > 0 else u256(0)
+
+        market.no_pool = no_pool - proceeds
+        self.markets[market_id] = market
+        pos.no_shares = pos.no_shares - shares
+        self.positions[seller][market_id] = pos
+
+        if int(proceeds) > 0:
+            gl.message.send_tokens(gl.message.sender_address, int(proceeds))
+        return proceeds
+
+    @gl.public.write
+    def claim_reward(self, market_id: u256) -> u256:
+        claimant = str(gl.message.sender_address)
+        pos = self._get_or_default_position(claimant, market_id)
+        assert not pos.claimed, "Already claimed"
+
+        market = self.markets.get(market_id)
+        assert market is not None, "Market not found"
+        assert market.resolved, "Market not yet resolved"
+
+        winning_shares = pos.yes_shares if market.outcome else pos.no_shares
+        assert int(winning_shares) > 0, "No winning shares"
+
+        yes_pool = int(market.yes_pool)
+        no_pool = int(market.no_pool)
+        total_pool = yes_pool + no_pool
+        winning_pool = yes_pool if market.outcome else no_pool
+
+        reward = u256(total_pool * int(winning_shares) // winning_pool) if winning_pool > 0 else u256(0)
+
+        pos.claimed = True
+        self.positions[claimant][market_id] = pos
+
+        if int(reward) > 0:
+            gl.message.send_tokens(gl.message.sender_address, int(reward))
+        return reward
+
+    @gl.public.write
+    def set_resolver(self, new_resolver: str) -> None:
+        assert str(gl.message.sender_address) == self.resolver_address or self.resolver_address == str(gl.message.sender_address), "Unauthorized"
+        self.resolver_address = new_resolver
+
+    @gl.public.write
+    def set_market_resolved(self, market_id: u256, outcome: bool) -> None:
+        assert str(gl.message.sender_address) == self.resolver_address, "Unauthorized"
         market = self.markets.get(market_id)
         assert market is not None, "Market not found"
         market.resolved = True
@@ -117,24 +213,24 @@ class MarketFactory(gl.Contract):
 
     @gl.public.view
     def get_market(self, market_id: u256) -> dict:
-        market = self.markets.get(market_id)
-        if market is None:
+        m = self.markets.get(market_id)
+        if m is None:
             return {}
         return {
-            "id": int(market.id),
-            "creator": market.creator,
-            "question": market.question,
-            "resolution_criteria": market.resolution_criteria,
-            "category": market.category,
-            "deadline": int(market.deadline),
-            "resolved": market.resolved,
-            "outcome": market.outcome,
-            "yes_pool": int(market.yes_pool),
-            "no_pool": int(market.no_pool),
-            "total_volume": int(market.total_volume),
-            "resolver_address": market.resolver_address,
-            "sources": list(market.sources),
-            "created_at": int(market.created_at),
+            "id": int(m.id),
+            "creator": m.creator,
+            "question": m.question,
+            "resolution_criteria": m.resolution_criteria,
+            "category": m.category,
+            "deadline": int(m.deadline),
+            "resolved": m.resolved,
+            "outcome": m.outcome,
+            "yes_pool": int(m.yes_pool),
+            "no_pool": int(m.no_pool),
+            "total_volume": int(m.total_volume),
+            "resolver_address": self.resolver_address,
+            "sources": list(m.sources),
+            "created_at": int(m.created_at),
         }
 
     @gl.public.view
@@ -155,7 +251,7 @@ class MarketFactory(gl.Contract):
                     "yes_pool": int(m.yes_pool),
                     "no_pool": int(m.no_pool),
                     "total_volume": int(m.total_volume),
-                    "resolver_address": m.resolver_address,
+                    "resolver_address": self.resolver_address,
                     "sources": list(m.sources),
                     "created_at": int(m.created_at),
                 })
@@ -182,7 +278,7 @@ class MarketFactory(gl.Contract):
                     "yes_pool": int(m.yes_pool),
                     "no_pool": int(m.no_pool),
                     "total_volume": int(m.total_volume),
-                    "resolver_address": m.resolver_address,
+                    "resolver_address": self.resolver_address,
                     "sources": list(m.sources),
                     "created_at": int(m.created_at),
                 })
@@ -190,7 +286,6 @@ class MarketFactory(gl.Contract):
 
     @gl.public.view
     def get_protocol_stats(self) -> dict:
-        total_markets = int(self.market_count)
         total_resolved = 0
         total_volume = 0
         for mid in self.all_market_ids:
@@ -200,12 +295,92 @@ class MarketFactory(gl.Contract):
                     total_resolved += 1
                 total_volume += int(m.total_volume)
         return {
-            "total_markets": total_markets,
+            "total_markets": int(self.market_count),
             "total_volume": total_volume,
             "total_resolved": total_resolved,
-            "total_traders": len(self.trader_set),
+            "total_traders": int(self.trader_count),
         }
 
     @gl.public.view
-    def get_market_count(self) -> int:
-        return int(self.market_count)
+    def get_position(self, user: str, market_id: u256) -> dict:
+        pos = self._get_or_default_position(user, market_id)
+        return {
+            "market_id": int(market_id),
+            "yes_shares": int(pos.yes_shares),
+            "no_shares": int(pos.no_shares),
+            "avg_yes_price": int(pos.yes_cost) // int(pos.yes_shares) if int(pos.yes_shares) > 0 else 0,
+            "avg_no_price": int(pos.no_cost) // int(pos.no_shares) if int(pos.no_shares) > 0 else 0,
+        }
+
+    @gl.public.view
+    def get_user_positions(self, user: str) -> list:
+        ids = self.user_market_ids.get(user)
+        if ids is None:
+            return []
+        user_pos_map = self.positions.get(user)
+        if user_pos_map is None:
+            return []
+        result = []
+        for mid in ids:
+            pos = user_pos_map.get(mid)
+            if pos is not None and (int(pos.yes_shares) > 0 or int(pos.no_shares) > 0):
+                result.append({
+                    "market_id": int(mid),
+                    "yes_shares": int(pos.yes_shares),
+                    "no_shares": int(pos.no_shares),
+                    "avg_yes_price": int(pos.yes_cost) // int(pos.yes_shares) if int(pos.yes_shares) > 0 else 0,
+                    "avg_no_price": int(pos.no_cost) // int(pos.no_shares) if int(pos.no_shares) > 0 else 0,
+                })
+        return result
+
+    def _compute_shares(self, amount: u256, pool_in: u256, pool_out: u256) -> u256:
+        total = int(pool_in) + int(pool_out)
+        if total == 0:
+            return amount
+        return u256(int(pool_out) * int(amount) // (int(pool_in) + int(amount)))
+
+    def _track_trader(self, addr: str) -> None:
+        if not self.trader_seen.get(addr):
+            self.trader_seen[addr] = True
+            self.trader_count = self.trader_count + u256(1)
+
+    def _get_or_default_position(self, user: str, market_id: u256) -> Position:
+        user_map = self.positions.get(user)
+        if user_map is None:
+            return Position(yes_shares=u256(0), no_shares=u256(0), yes_cost=u256(0), no_cost=u256(0), claimed=False)
+        pos = user_map.get(market_id)
+        if pos is None:
+            return Position(yes_shares=u256(0), no_shares=u256(0), yes_cost=u256(0), no_cost=u256(0), claimed=False)
+        return pos
+
+    def _record_position_yes(self, user: str, market_id: u256, shares: u256, cost: u256) -> None:
+        self.positions.get_or_insert_default(user)
+        pos = self.positions[user].get(market_id)
+        if pos is None:
+            pos = Position(yes_shares=shares, no_shares=u256(0), yes_cost=cost, no_cost=u256(0), claimed=False)
+        else:
+            pos.yes_shares = pos.yes_shares + shares
+            pos.yes_cost = pos.yes_cost + cost
+        self.positions[user][market_id] = pos
+        self._track_user_market(user, market_id)
+
+    def _record_position_no(self, user: str, market_id: u256, shares: u256, cost: u256) -> None:
+        self.positions.get_or_insert_default(user)
+        pos = self.positions[user].get(market_id)
+        if pos is None:
+            pos = Position(yes_shares=u256(0), no_shares=shares, yes_cost=u256(0), no_cost=cost, claimed=False)
+        else:
+            pos.no_shares = pos.no_shares + shares
+            pos.no_cost = pos.no_cost + cost
+        self.positions[user][market_id] = pos
+        self._track_user_market(user, market_id)
+
+    def _track_user_market(self, user: str, market_id: u256) -> None:
+        ids = self.user_market_ids.get(user)
+        if ids is None:
+            self.user_market_ids.get_or_insert_default(user).append(market_id)
+            return
+        for mid in ids:
+            if int(mid) == int(market_id):
+                return
+        ids.append(market_id)
