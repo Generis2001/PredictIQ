@@ -21,10 +21,27 @@ export default function Navigation() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur">
       <nav className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-6">
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <span className="w-7 h-7 rounded-md bg-electric-blue flex items-center justify-center text-white text-xs font-black">
+          {/* Vercel triangle mark */}
+          <svg width="22" height="20" viewBox="0 0 76 65" fill="currentColor" className="text-foreground" aria-hidden>
+            <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+          </svg>
+          <span className="font-bold text-foreground tracking-tight">
+            Predict
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-playfair)",
+              fontStyle: "italic",
+              fontWeight: 700,
+              fontSize: "1.15rem",
+              lineHeight: 1,
+              letterSpacing: "-0.02em",
+              color: "#3b82f6",
+              marginLeft: "-4px",
+            }}
+          >
             IQ
           </span>
-          <span className="font-bold text-foreground tracking-tight">PredictIQ</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-1">
