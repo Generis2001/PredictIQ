@@ -30,7 +30,7 @@ export default function Navigation() {
               fontSize: "1.15rem",
               lineHeight: 1,
               letterSpacing: "-0.02em",
-              color: "#3b82f6",
+              color: "#d8d8e4",
             }}
           >
             IQ

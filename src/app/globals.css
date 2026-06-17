@@ -2,15 +2,15 @@
 
 :root {
   /* Background layers */
-  --background: #0a0d14;
-  --surface: #111520;
-  --surface-2: #181e2e;
-  --border: #1e2740;
+  --background: #0f0f11;
+  --surface: #171719;
+  --surface-2: #1f1f22;
+  --border: #2e2e33;
 
   /* Text */
-  --foreground: #e8eaf0;
-  --muted: #6b7280;
-  --subtle: #374151;
+  --foreground: #f0f0f2;
+  --muted: #87878f;
+  --subtle: #4a4a52;
 
   /* Brand */
   --electric-blue: #3b82f6;

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useProtocolStats } from "@/hooks/useMarkets";
 import { formatVolume } from "@/lib/format";
 
-const BODY = "color: #8ab4d4"; // soft blue-white for body copy against dark bg
+const BODY = "color: #a0a0aa"; // silver-grey for body copy against dark bg
 
 const HOW_IT_WORKS = [
   {
@@ -74,7 +74,7 @@ export default function LandingPage() {
           className="pointer-events-none absolute inset-0 z-0"
           style={{
             background:
-              "radial-gradient(ellipse 70% 80% at 80% 55%, rgba(59,130,246,0.22) 0%, rgba(79,70,229,0.14) 40%, transparent 70%)",
+              "radial-gradient(ellipse 70% 80% at 80% 55%, rgba(180,180,195,0.07) 0%, rgba(120,120,140,0.04) 40%, transparent 70%)",
           }}
         />
 
@@ -94,10 +94,10 @@ export default function LandingPage() {
               </feMerge>
             </filter>
             <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(6,182,212,0)" />
-              <stop offset="35%" stopColor="rgba(59,130,246,0.9)" />
-              <stop offset="65%" stopColor="rgba(79,70,229,0.9)" />
-              <stop offset="100%" stopColor="rgba(79,70,229,0)" />
+              <stop offset="0%" stopColor="rgba(200,200,210,0)" />
+              <stop offset="35%" stopColor="rgba(200,200,210,0.55)" />
+              <stop offset="65%" stopColor="rgba(160,160,175,0.45)" />
+              <stop offset="100%" stopColor="rgba(160,160,175,0)" />
             </linearGradient>
           </defs>
           <path
@@ -116,7 +116,7 @@ export default function LandingPage() {
             <div className="flex flex-col gap-6">
               <p
                 className="text-xs font-semibold tracking-[0.2em] uppercase"
-                style={{ color: "rgba(59,130,246,0.8)" }}
+                style={{ color: "rgba(160,160,170,0.75)" }}
               >
                 FOR PREDICTORS, BY AI
               </p>
@@ -128,14 +128,14 @@ export default function LandingPage() {
                 <Link
                   href="/markets"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm text-white transition-all hover:scale-105 active:scale-95"
-                  style={{ background: "linear-gradient(135deg, #3b82f6, #4f46e5)" }}
+                  style={{ background: "linear-gradient(135deg, #3a3a42, #5a5a66)" }}
                 >
                   Browse Markets <span className="text-base">››</span>
                 </Link>
                 <Link
                   href="/create"
                   className="text-sm hover:text-foreground transition-colors"
-                  style={{ color: "#8ab4d4" }}
+                  style={{ color: "#a0a0aa" }}
                 >
                   Create a Market
                 </Link>
@@ -145,14 +145,14 @@ export default function LandingPage() {
             <div className="flex flex-col gap-2 md:self-end md:text-right">
               <p
                 className="text-base md:text-lg leading-relaxed"
-                style={{ color: "#a8c8e8" }}
+                style={{ color: "#b8b8c4" }}
               >
                 AI-powered prediction markets on GenLayer.<br />
                 Evidence-based resolution, validator consensus,
               </p>
               <p
                 className="text-base md:text-lg font-semibold"
-                style={{ color: "#3b82f6" }}
+                style={{ color: "#d8d8e4" }}
               >
                 zero oracles required.
               </p>
@@ -169,13 +169,13 @@ export default function LandingPage() {
               { label: "Traders", value: stats?.total_traders != null ? String(stats.total_traders) : null },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col gap-0.5">
-                <span className="text-xs uppercase tracking-wider" style={{ color: "#8ab4d4" }}>{label}</span>
+                <span className="text-xs uppercase tracking-wider" style={{ color: "#87878f" }}>{label}</span>
                 {isLoading ? (
                   <div className="h-6 w-14 bg-surface-2 rounded animate-pulse" />
                 ) : value != null ? (
                   <span className="text-xl font-bold text-foreground">{value}</span>
                 ) : (
-                  <span className="text-xl font-bold" style={{ color: "#4a6a8a" }}>—</span>
+                  <span className="text-xl font-bold" style={{ color: "#4a4a52" }}>—</span>
                 )}
               </div>
             ))}
@@ -186,7 +186,7 @@ export default function LandingPage() {
       {/* HOW IT WORKS */}
       <section className="max-w-7xl mx-auto w-full px-6 md:px-10 py-24 flex flex-col gap-12">
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-2" style={{ color: "#3b82f6" }}>
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-2" style={{ color: "#87878f" }}>
             Protocol
           </p>
           <h2 className="text-3xl md:text-4xl font-black text-foreground">How It Works</h2>
@@ -199,12 +199,12 @@ export default function LandingPage() {
             >
               <span
                 className="text-4xl font-black leading-none"
-                style={{ color: "rgba(59,130,246,0.15)" }}
+                style={{ color: "rgba(200,200,210,0.12)" }}
               >
                 {step}
               </span>
               <h3 className="font-bold text-foreground text-sm">{title}</h3>
-              <p className="text-xs leading-relaxed" style={{ color: "#8ab4d4" }}>{description}</p>
+              <p className="text-xs leading-relaxed" style={{ color: "#a0a0aa" }}>{description}</p>
             </div>
           ))}
         </div>
@@ -213,16 +213,16 @@ export default function LandingPage() {
       {/* WHY PREDICTIQ */}
       <section
         className="w-full py-24"
-        style={{ background: "linear-gradient(180deg, transparent 0%, rgba(59,130,246,0.04) 50%, transparent 100%)" }}
+        style={{ background: "linear-gradient(180deg, transparent 0%, rgba(200,200,210,0.03) 50%, transparent 100%)" }}
       >
         <div className="max-w-7xl mx-auto px-6 md:px-10 flex flex-col gap-12">
           <div>
-            <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-2" style={{ color: "#3b82f6" }}>
+            <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-2" style={{ color: "#87878f" }}>
               Why PredictIQ
             </p>
             <h2 className="text-3xl md:text-4xl font-black text-foreground">
               Built different<br />
-              <span style={{ color: "#3b82f6" }}>from the start.</span>
+              <span style={{ color: "#c8c8d4" }}>from the start.</span>
             </h2>
           </div>
           <div className="grid md:grid-cols-2 gap-5">
@@ -232,7 +232,7 @@ export default function LandingPage() {
                 className="p-6 rounded-2xl border border-border bg-surface flex flex-col gap-3 hover:border-electric-blue/30 transition-colors"
               >
                 <h3 className="font-bold text-foreground">{title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#8ab4d4" }}>{description}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "#a0a0aa" }}>{description}</p>
               </div>
             ))}
           </div>
@@ -251,17 +251,17 @@ export default function LandingPage() {
             {
               title: "Intelligent Contracts",
               body: "Python contracts with native LLM inference and web access via gl.exec_prompt() and gl.get_webpage(). AI is a first-class primitive.",
-              color: "#06b6d4",
+              color: "#d8d8e4",
             },
             {
               title: "Optimistic Democracy",
               body: "A leader validator proposes; peers independently verify using the Equivalence Principle. No single point of failure in resolution.",
-              color: "#3b82f6",
+              color: "#c0c0cc",
             },
             {
               title: "Non-Determinism Handled",
               body: "GenVM's execution model separates AI/web operations from deterministic state transitions, achieving consensus without identical outputs.",
-              color: "#818cf8",
+              color: "#a8a8b8",
             },
           ].map(({ title, body, color }) => (
             <div
@@ -269,7 +269,7 @@ export default function LandingPage() {
               className="p-6 rounded-2xl border border-border bg-surface flex flex-col gap-3 hover:border-electric-blue/30 transition-colors"
             >
               <h3 className="font-bold" style={{ color }}>{title}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "#8ab4d4" }}>{body}</p>
+              <p className="text-sm leading-relaxed" style={{ color: "#a0a0aa" }}>{body}</p>
             </div>
           ))}
         </div>
@@ -279,7 +279,7 @@ export default function LandingPage() {
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm hover:underline"
-            style={{ color: "#3b82f6" }}
+            style={{ color: "#a0a0aa" }}
           >
             Learn about GenLayer →
           </a>
@@ -288,7 +288,7 @@ export default function LandingPage() {
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm hover:underline"
-            style={{ color: "#3b82f6" }}
+            style={{ color: "#a0a0aa" }}
           >
             Read the docs →
           </a>
@@ -302,28 +302,28 @@ export default function LandingPage() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse 60% 100% at 50% 50%, rgba(59,130,246,0.1) 0%, transparent 70%)",
+              "radial-gradient(ellipse 60% 100% at 50% 50%, rgba(200,200,210,0.05) 0%, transparent 70%)",
           }}
         />
         <div className="relative max-w-7xl mx-auto px-6 md:px-10 flex flex-col items-center gap-6 text-center">
           <h2 className="text-4xl md:text-5xl font-black text-foreground">
             Ready to predict?
           </h2>
-          <p className="max-w-md" style={{ color: "#8ab4d4" }}>
+          <p className="max-w-md" style={{ color: "#a0a0aa" }}>
             Connect your wallet, browse live markets, or create the first prediction market on PredictIQ.
           </p>
           <div className="flex gap-3 flex-wrap justify-center">
             <Link
               href="/markets"
               className="inline-flex items-center gap-2 px-8 py-3 rounded-full font-bold text-sm text-white transition-all hover:scale-105 active:scale-95"
-              style={{ background: "linear-gradient(135deg, #3b82f6, #4f46e5)" }}
+              style={{ background: "linear-gradient(135deg, #3a3a42, #5a5a66)" }}
             >
               View All Markets ››
             </Link>
             <Link
               href="/create"
               className="inline-flex items-center px-8 py-3 rounded-full font-bold text-sm border border-border hover:border-electric-blue/40 transition-all"
-              style={{ color: "#8ab4d4" }}
+              style={{ color: "#a0a0aa" }}
             >
               Create a Market
             </Link>
