@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   title: "PredictIQ — Trade Predictions. Let AI Resolve Reality.",
   description:
     "AI-powered prediction markets on GenLayer. Intelligent Contracts use on-chain AI reasoning and validator consensus to resolve markets with verifiable accuracy.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
