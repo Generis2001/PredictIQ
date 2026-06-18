@@ -12,6 +12,33 @@ function getEthereum(): EthereumProvider | undefined {
   return (window as unknown as { ethereum?: EthereumProvider }).ethereum;
 }
 
+const STUDIONET_CHAIN = {
+  chainId: "0xF22F", // 61999
+  chainName: "Genlayer Studio Network",
+  rpcUrls: ["https://studio.genlayer.com/api"],
+  nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
+  blockExplorerUrls: ["https://genlayer-explorer.vercel.app"],
+};
+
+async function ensureStudionet(ethereum: EthereumProvider) {
+  try {
+    await ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [STUDIONET_CHAIN],
+    });
+  } catch {
+    // Already added — try switching explicitly
+    try {
+      await ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: STUDIONET_CHAIN.chainId }],
+      });
+    } catch {
+      // Ignore — if it's already on studionet the switch succeeds silently
+    }
+  }
+}
+
 export function useWallet() {
   const [account, setAccount] = useState<`0x${string}` | undefined>(undefined);
   const [connecting, setConnecting] = useState(false);
@@ -30,6 +57,7 @@ export function useWallet() {
         method: "eth_requestAccounts",
       })) as string[];
       if (accounts.length > 0) {
+        await ensureStudionet(ethereum);
         setAccount(accounts[0] as `0x${string}`);
       }
     } catch (e) {
