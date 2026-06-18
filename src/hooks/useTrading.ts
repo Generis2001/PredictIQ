@@ -43,7 +43,9 @@ export function useTrading(account: `0x${string}` | undefined) {
         });
         setTxState("finalized");
         await qc.invalidateQueries({ queryKey: ["markets"] });
+        await qc.invalidateQueries({ queryKey: ["market"] });
         await qc.invalidateQueries({ queryKey: ["portfolio"] });
+        await qc.invalidateQueries({ queryKey: ["protocol"] });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Transaction failed";
         setError(msg);
