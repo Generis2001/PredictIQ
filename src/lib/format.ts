@@ -7,11 +7,7 @@ export function formatGEN(wei: number | bigint): string {
 }
 
 export function formatVolume(wei: number | bigint): string {
-  const value = typeof wei === "bigint" ? Number(wei) : wei;
-  const gen = value / 1e18;
-  if (gen >= 1_000_000) return `$${(gen / 1_000_000).toFixed(1)}M`;
-  if (gen >= 1_000) return `$${(gen / 1_000).toFixed(1)}K`;
-  return `$${gen.toFixed(2)}`;
+  return formatGEN(wei);
 }
 
 export function formatPercent(value: number): string {
