@@ -118,7 +118,7 @@ export default function LandingPage() {
                 className="text-xs font-semibold tracking-[0.2em] uppercase"
                 style={{ color: "rgba(160,160,170,0.75)" }}
               >
-                FOR PREDICTORS, BY AI
+                FOR PREDICTORS, ON GENLAYER
               </p>
               <h1 className="text-6xl md:text-7xl lg:text-8xl font-black text-foreground leading-none tracking-tight">
                 Trade<br />
