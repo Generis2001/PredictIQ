@@ -53,7 +53,7 @@ export default function MarketCard({ market }: { market: Market }) {
             />
           </div>
           <div className="flex justify-between mt-2 text-xs text-muted">
-            <span>Vol: {formatVolume(total)}</span>
+            <span>Vol: {formatVolume(market.total_volume)}</span>
             <span>#{market.id}</span>
           </div>
         </div>
