@@ -48,6 +48,15 @@ export interface ProtocolStats {
   total_traders: number;
 }
 
+export interface UserProfile {
+  username: string;
+  bio: string;
+  avatar_url: string;
+  twitter_handle: string;
+  created_at: number;
+  updated_at: number;
+}
+
 export type TransactionState =
   | "idle"
   | "pending"

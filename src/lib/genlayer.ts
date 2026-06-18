@@ -18,6 +18,10 @@ export const REWARD_DISTRIBUTOR_ADDRESS =
   (process.env.NEXT_PUBLIC_REWARD_DISTRIBUTOR_ADDRESS as `0x${string}`) ||
   "0x0000000000000000000000000000000000000000";
 
+export const USER_PROFILE_ADDRESS =
+  (process.env.NEXT_PUBLIC_USER_PROFILE_ADDRESS as `0x${string}`) ||
+  "0x0000000000000000000000000000000000000000";
+
 export function getReadClient() {
   return createClient({ chain: studionet });
 }
