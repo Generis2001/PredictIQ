@@ -82,9 +82,12 @@ export function useWallet() {
 
     ethereum.on("accountsChanged", handleAccountsChanged);
 
-    ethereum.request({ method: "eth_accounts" }).then((res) => {
+    ethereum.request({ method: "eth_accounts" }).then(async (res) => {
       const accs = res as string[];
-      if (accs.length > 0) setAccount(accs[0] as `0x${string}`);
+      if (accs.length > 0) {
+        await ensureStudionet(ethereum);
+        setAccount(accs[0] as `0x${string}`);
+      }
     });
 
     return () => {

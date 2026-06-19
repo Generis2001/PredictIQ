@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getReadClient, getWriteClient, USER_PROFILE_ADDRESS, TransactionStatus } from "@/lib/genlayer";
+import { getReadClient, getWriteClient, USER_PROFILE_ADDRESS, pollForFinalized } from "@/lib/genlayer";
 import type { UserProfile, TransactionState } from "@/types";
 
 export function useProfile(address: string | null | undefined) {
@@ -65,10 +65,7 @@ export function useProfileActions(account: `0x${string}` | undefined) {
         setTxHash(hash);
         setTxState("proposing");
 
-        await client.waitForTransactionReceipt({ hash: hash as never, status: TransactionStatus.ACCEPTED });
-        setTxState("accepted");
-
-        await client.waitForTransactionReceipt({ hash: hash as never, status: TransactionStatus.FINALIZED });
+        await pollForFinalized(hash, () => setTxState("accepted"));
         setTxState("finalized");
 
         await qc.invalidateQueries({ queryKey: ["profile"] });

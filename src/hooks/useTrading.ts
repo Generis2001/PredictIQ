@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getWriteClient, PREDICTION_MARKET_ADDRESS, TransactionStatus } from "@/lib/genlayer";
+import { getWriteClient, PREDICTION_MARKET_ADDRESS, pollForFinalized } from "@/lib/genlayer";
 import type { TransactionState } from "@/types";
 
 export function useTrading(account: `0x${string}` | undefined) {
@@ -31,16 +31,7 @@ export function useTrading(account: `0x${string}` | undefined) {
         setTxHash(hash);
         setTxState("proposing");
 
-        await client.waitForTransactionReceipt({
-          hash: hash as never,
-          status: TransactionStatus.ACCEPTED,
-        });
-        setTxState("accepted");
-
-        await client.waitForTransactionReceipt({
-          hash: hash as never,
-          status: TransactionStatus.FINALIZED,
-        });
+        await pollForFinalized(hash, () => setTxState("accepted"));
         setTxState("finalized");
         await qc.invalidateQueries({ queryKey: ["markets"] });
         await qc.invalidateQueries({ queryKey: ["market"] });

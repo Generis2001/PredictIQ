@@ -31,3 +31,36 @@ export function getWriteClient(account: `0x${string}`) {
 }
 
 export { TransactionStatus };
+
+const STUDIONET_RPC = "https://studio.genlayer.com/api";
+
+export async function pollForFinalized(
+  hash: string,
+  onAccepted?: () => void,
+  maxAttempts = 120
+): Promise<void> {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    const res = await fetch(STUDIONET_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "eth_getTransactionByHash",
+        params: [hash],
+        id: 1,
+      }),
+    });
+    const body = await res.json();
+    const tx = body.result;
+    if (!tx) continue;
+    if (tx.status === "ACCEPTED" || tx.status === "FINALIZED") {
+      onAccepted?.();
+    }
+    if (tx.status === "FINALIZED") return;
+    if (tx.status === "CANCELED" || tx.status === "UNDETERMINED") {
+      throw new Error(`Transaction ${tx.status}`);
+    }
+  }
+  throw new Error("Transaction timed out after 10 minutes");
+}
