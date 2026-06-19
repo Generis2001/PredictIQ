@@ -18,6 +18,7 @@ import {
   calcYesPrice,
   calcNoPrice,
   formatPercent,
+  formatGENAmount,
 } from "@/lib/format";
 import Link from "next/link";
 
@@ -298,39 +299,37 @@ export default function MarketDetailPage({
                       className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-electric-blue"
                     />
                   </div>
-                  {amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && (
-                    <div className="text-xs border border-border rounded-lg p-3 flex flex-col gap-1.5">
-                      <div className="flex justify-between text-muted">
-                        <span>Odds</span>
-                        <span>{tab === "buy-yes" ? formatPercent(yesPrice) : formatPercent(noPrice)}</span>
+                  {amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && (() => {
+                    const amt = parseFloat(amount);
+                    const price = tab === "buy-yes" ? yesPrice : noPrice;
+                    const validPrice = price >= 0.001 && price <= 0.999;
+                    const shares = validPrice ? amt / price : null;
+                    return (
+                      <div className="text-xs border border-border rounded-lg p-3 flex flex-col gap-1.5">
+                        <div className="flex justify-between text-muted">
+                          <span>Odds</span>
+                          <span>{formatPercent(price)}</span>
+                        </div>
+                        <div className="flex justify-between text-muted">
+                          <span>Est. shares</span>
+                          <span>{shares !== null ? shares.toFixed(2) : "—"}</span>
+                        </div>
+                        <div className="border-t border-border my-0.5" />
+                        <div className="flex justify-between font-semibold">
+                          <span className="text-muted">To win</span>
+                          <span className={tab === "buy-yes" ? "text-yes" : "text-no"}>
+                            {shares !== null ? formatGENAmount(shares) : "—"}
+                          </span>
+                        </div>
+                        {shares !== null && shares > amt && (
+                          <div className="flex justify-between text-[11px] text-muted">
+                            <span>Net profit if correct</span>
+                            <span>+{formatGENAmount(shares - amt)}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex justify-between text-muted">
-                        <span>Est. shares</span>
-                        <span>
-                          {tab === "buy-yes"
-                            ? (parseFloat(amount) / yesPrice).toFixed(2)
-                            : (parseFloat(amount) / noPrice).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="border-t border-border my-0.5" />
-                      <div className="flex justify-between font-semibold">
-                        <span className="text-muted">To win</span>
-                        <span className={tab === "buy-yes" ? "text-yes" : "text-no"}>
-                          {tab === "buy-yes"
-                            ? `${(parseFloat(amount) / yesPrice).toFixed(2)} GEN`
-                            : `${(parseFloat(amount) / noPrice).toFixed(2)} GEN`}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-muted">
-                        <span>Net profit if correct</span>
-                        <span>
-                          +{tab === "buy-yes"
-                            ? (parseFloat(amount) / yesPrice - parseFloat(amount)).toFixed(2)
-                            : (parseFloat(amount) / noPrice - parseFloat(amount)).toFixed(2)} GEN
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                   {account ? (
                     <Button
                       variant={tab === "buy-yes" ? "yes" : "no"}

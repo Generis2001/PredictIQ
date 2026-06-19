@@ -40,3 +40,12 @@ export function calcNoPrice(yesPool: number, noPool: number): number {
   if (total === 0) return 0.5;
   return yesPool / total;
 }
+
+// Formats a raw GEN amount (not wei) with no scientific notation, max 2 decimal places
+export function formatGENAmount(gen: number): string {
+  if (!isFinite(gen) || isNaN(gen) || gen <= 0) return "—";
+  if (gen >= 1_000_000_000) return `${(gen / 1_000_000_000).toFixed(2)}B GEN`;
+  if (gen >= 1_000_000) return `${(gen / 1_000_000).toFixed(2)}M GEN`;
+  if (gen >= 1_000) return `${(gen / 1_000).toFixed(2)}K GEN`;
+  return `${gen.toFixed(2)} GEN`;
+}

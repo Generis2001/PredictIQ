@@ -56,8 +56,8 @@ export async function pollForFinalized(
     if (!tx) continue;
     if (tx.status === "ACCEPTED" || tx.status === "FINALIZED") {
       onAccepted?.();
+      return;
     }
-    if (tx.status === "FINALIZED") return;
     if (tx.status === "CANCELED" || tx.status === "UNDETERMINED") {
       throw new Error(`Transaction ${tx.status}`);
     }
