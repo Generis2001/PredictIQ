@@ -298,18 +298,35 @@ export default function MarketDetailPage({
                       className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-electric-blue"
                     />
                   </div>
-                  {amount && !isNaN(parseFloat(amount)) && (
-                    <div className="text-xs text-muted border border-border rounded-lg p-2">
-                      <div className="flex justify-between">
-                        <span>Price per share</span>
+                  {amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && (
+                    <div className="text-xs border border-border rounded-lg p-3 flex flex-col gap-1.5">
+                      <div className="flex justify-between text-muted">
+                        <span>Odds</span>
                         <span>{tab === "buy-yes" ? formatPercent(yesPrice) : formatPercent(noPrice)}</span>
                       </div>
-                      <div className="flex justify-between mt-1">
+                      <div className="flex justify-between text-muted">
                         <span>Est. shares</span>
                         <span>
                           {tab === "buy-yes"
-                            ? (parseFloat(amount) / yesPrice).toFixed(4)
-                            : (parseFloat(amount) / noPrice).toFixed(4)}
+                            ? (parseFloat(amount) / yesPrice).toFixed(2)
+                            : (parseFloat(amount) / noPrice).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="border-t border-border my-0.5" />
+                      <div className="flex justify-between font-semibold">
+                        <span className="text-muted">To win</span>
+                        <span className={tab === "buy-yes" ? "text-yes" : "text-no"}>
+                          {tab === "buy-yes"
+                            ? `${(parseFloat(amount) / yesPrice).toFixed(2)} GEN`
+                            : `${(parseFloat(amount) / noPrice).toFixed(2)} GEN`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-muted">
+                        <span>Net profit if correct</span>
+                        <span>
+                          +{tab === "buy-yes"
+                            ? (parseFloat(amount) / yesPrice - parseFloat(amount)).toFixed(2)
+                            : (parseFloat(amount) / noPrice - parseFloat(amount)).toFixed(2)} GEN
                         </span>
                       </div>
                     </div>

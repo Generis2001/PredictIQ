@@ -7,7 +7,7 @@ import { usePortfolio } from "@/hooks/usePortfolio";
 import { useAllMarkets } from "@/hooks/useMarkets";
 import { formatAddress } from "@/lib/format";
 
-function Avatar({ src, username, size = 56 }: { src?: string; username?: string; size?: number }) {
+function Avatar({ src, username, size = 52 }: { src?: string; username?: string; size?: number }) {
   const initials = username ? username.slice(0, 2).toUpperCase() : "?";
   return (
     <div
@@ -54,32 +54,74 @@ export default function ProfilePanel() {
 
   return (
     <div
-      className="fixed right-0 top-1/3 z-40 flex items-stretch"
+      className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      {/* Slide-in panel */}
+      {/* Collapsed tab — always visible */}
+      <div
+        className="flex flex-col items-center justify-center gap-2 w-7 cursor-pointer"
+        style={{
+          background: "#171719",
+          borderLeft: "1px solid #2e2e33",
+          borderTop: "1px solid #2e2e33",
+          borderBottom: "1px solid #2e2e33",
+          borderRadius: "8px 0 0 8px",
+          paddingTop: 16,
+          paddingBottom: 16,
+          boxShadow: "-2px 0 12px rgba(0,0,0,0.4)",
+        }}
+      >
+        <Avatar src={profile.avatar_url} username={profile.username} size={20} />
+        <span
+          style={{
+            writingMode: "vertical-rl",
+            transform: "rotate(180deg)",
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            color: "#87878f",
+            textTransform: "uppercase",
+            userSelect: "none",
+          }}
+        >
+          Profile
+        </span>
+      </div>
+
+      {/* Expanded panel */}
       <div
         style={{
-          width: 240,
+          width: 260,
+          maxHeight: "80vh",
           transform: open ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.22s cubic-bezier(0.4,0,0.2,1)",
+          transition: "transform 0.2s cubic-bezier(0.4,0,0.2,1)",
+          background: "#171719",
+          borderLeft: "1px solid #2e2e33",
+          borderTop: "1px solid #2e2e33",
+          borderBottom: "1px solid #2e2e33",
+          borderRadius: "0 0 0 12px",
+          boxShadow: "-4px 0 24px rgba(0,0,0,0.5)",
+          overflowY: "auto",
         }}
-        className="bg-surface border-l border-t border-b border-border rounded-l-xl shadow-2xl flex flex-col gap-4 p-4"
+        className="flex flex-col gap-4 p-5"
       >
-        {/* Avatar + name */}
+        {/* Avatar + identity */}
         <div className="flex items-center gap-3">
-          <Avatar src={profile.avatar_url} username={profile.username} size={44} />
+          <Avatar src={profile.avatar_url} username={profile.username} size={48} />
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-semibold text-foreground truncate">@{profile.username}</span>
-            <span className="text-xs text-muted font-mono">{formatAddress(account)}</span>
+            <span className="text-sm font-semibold text-foreground truncate">
+              @{profile.username}
+            </span>
+            <span className="text-[11px] text-muted font-mono mt-0.5">
+              {formatAddress(account)}
+            </span>
           </div>
         </div>
 
         {/* Bio */}
         {profile.bio && (
           <p className="text-xs leading-relaxed" style={{ color: "#a0a0aa" }}>
-            {profile.bio.length > 120 ? profile.bio.slice(0, 120) + "…" : profile.bio}
+            {profile.bio.length > 140 ? profile.bio.slice(0, 140) + "…" : profile.bio}
           </p>
         )}
 
@@ -89,44 +131,34 @@ export default function ProfilePanel() {
             href={`https://x.com/${profile.twitter_handle}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-muted hover:text-foreground transition-colors w-fit"
+            className="text-[11px] text-muted hover:text-foreground transition-colors w-fit"
           >
-            @{profile.twitter_handle} on X
+            @{profile.twitter_handle} on X ↗
           </a>
         )}
 
+        {/* Divider */}
+        <div className="border-t border-border" />
+
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-2 border-t border-border pt-3">
-          <div className="flex flex-col gap-0.5">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-surface-2 border border-border">
             <span className="text-[10px] text-muted uppercase tracking-wider">Markets</span>
-            <span className="text-base font-bold text-foreground">{marketsCreated}</span>
+            <span className="text-lg font-bold text-foreground">{marketsCreated}</span>
           </div>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-surface-2 border border-border">
             <span className="text-[10px] text-muted uppercase tracking-wider">Active</span>
-            <span className="text-base font-bold text-foreground">{activePositions}</span>
+            <span className="text-lg font-bold text-foreground">{activePositions}</span>
           </div>
         </div>
 
-        {/* Link to full profile */}
+        {/* Link */}
         <Link
           href="/profile"
-          className="text-xs text-center py-1.5 rounded-lg border border-border text-muted hover:text-foreground transition-colors"
+          className="text-xs text-center py-2 rounded-lg border border-border text-muted hover:text-foreground hover:border-muted transition-colors mt-auto"
         >
-          View full profile
+          View full profile →
         </Link>
-      </div>
-
-      {/* Tab handle — always visible on the right edge */}
-      <div
-        style={{
-          writingMode: "vertical-rl",
-          transform: open ? "none" : "none",
-        }}
-        className="flex items-center justify-center w-5 bg-surface border border-border rounded-l-md cursor-pointer"
-      >
-        <span className="text-[9px] tracking-widest text-muted uppercase select-none rotate-180">
-          Profile
-        </span>
       </div>
     </div>
   );
