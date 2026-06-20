@@ -13,7 +13,7 @@ export function useProfile(address: string | null | undefined) {
       const result = await client.readContract({
         address: USER_PROFILE_ADDRESS,
         functionName: "get_profile",
-        args: [address.toLowerCase()],
+        args: [address],
       });
       const p = (result as unknown) as UserProfile;
       if (!p || typeof p !== "object" || !("username" in p)) return null;
@@ -33,7 +33,7 @@ export function useHasProfile(address: string | null | undefined) {
       const result = await client.readContract({
         address: USER_PROFILE_ADDRESS,
         functionName: "has_profile",
-        args: [address.toLowerCase()],
+        args: [address],
       });
       return Boolean(result);
     },

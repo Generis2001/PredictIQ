@@ -24,7 +24,7 @@ class UserProfile(gl.Contract):
 
     @gl.public.write
     def create_profile(self, username: str, bio: str, avatar_url: str, twitter_handle: str) -> None:
-        addr = str(gl.message.sender_address)
+        addr = str(gl.message.sender_address).lower()
         assert self.profiles.get(addr) is None, "Profile already exists"
         assert len(username) >= 3, "Username too short"
         assert len(username) <= 30, "Username too long"
@@ -42,7 +42,7 @@ class UserProfile(gl.Contract):
 
     @gl.public.write
     def update_profile(self, bio: str, avatar_url: str, twitter_handle: str) -> None:
-        addr = str(gl.message.sender_address)
+        addr = str(gl.message.sender_address).lower()
         profile = self.profiles.get(addr)
         assert profile is not None, "No profile found"
         profile.bio = bio

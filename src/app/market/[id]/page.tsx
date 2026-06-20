@@ -58,7 +58,7 @@ export default function MarketDetailPage({
 
   const yesPrice = calcYesPrice(market.yes_pool, market.no_pool);
   const noPrice = calcNoPrice(market.yes_pool, market.no_pool);
-  const total = market.yes_pool + market.no_pool;
+  const total = Number(market.yes_pool) + Number(market.no_pool);
 
   const handleTrade = async () => {
     if (!amount || isNaN(parseFloat(amount))) return;

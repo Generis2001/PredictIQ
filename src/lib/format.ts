@@ -1,5 +1,5 @@
-export function formatGEN(wei: number | bigint): string {
-  const value = typeof wei === "bigint" ? Number(wei) : wei;
+export function formatGEN(wei: number | bigint | string): string {
+  const value = typeof wei === "bigint" ? Number(wei) : Number(wei);
   const gen = value / 1e18;
   if (gen >= 1_000_000) return `${(gen / 1_000_000).toFixed(2)}M GEN`;
   if (gen >= 1_000) return `${(gen / 1_000).toFixed(2)}K GEN`;
@@ -29,16 +29,20 @@ export function formatTimeRemaining(deadline: number): string {
   return `${hours}h ${minutes}m`;
 }
 
-export function calcYesPrice(yesPool: number, noPool: number): number {
-  const total = yesPool + noPool;
-  if (total === 0) return 0.5;
-  return noPool / total;
+export function calcYesPrice(yesPool: number | string, noPool: number | string): number {
+  const y = Number(yesPool);
+  const n = Number(noPool);
+  const total = y + n;
+  if (!isFinite(total) || total === 0) return 0.5;
+  return n / total;
 }
 
-export function calcNoPrice(yesPool: number, noPool: number): number {
-  const total = yesPool + noPool;
-  if (total === 0) return 0.5;
-  return yesPool / total;
+export function calcNoPrice(yesPool: number | string, noPool: number | string): number {
+  const y = Number(yesPool);
+  const n = Number(noPool);
+  const total = y + n;
+  if (!isFinite(total) || total === 0) return 0.5;
+  return y / total;
 }
 
 // Formats a raw GEN amount (not wei) with no scientific notation, max 2 decimal places
