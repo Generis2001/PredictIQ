@@ -17,7 +17,6 @@ const categoryColors: Record<string, string> = {
 export default function MarketCard({ market }: { market: Market }) {
   const yesPrice = calcYesPrice(market.yes_pool, market.no_pool);
   const noPrice = calcNoPrice(market.yes_pool, market.no_pool);
-  const total = market.yes_pool + market.no_pool;
 
   return (
     <Link href={`/market/${market.id}`}>

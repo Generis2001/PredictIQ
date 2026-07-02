@@ -4,7 +4,6 @@ import { usePortfolio } from "@/hooks/usePortfolio";
 import { useAllMarkets } from "@/hooks/useMarkets";
 import { useTrading } from "@/hooks/useTrading";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import TxStatus from "@/components/ui/TxStatus";
 import { LoadingState, EmptyState } from "@/components/ui/Spinner";

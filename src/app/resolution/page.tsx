@@ -50,7 +50,7 @@ function ResolutionCard({
       {/* Confidence Bar */}
       <div>
         <div className="flex justify-between text-xs text-muted mb-1">
-          <span>AI Confidence</span>
+          <span>Resolver Confidence</span>
           <span>{formatPercent(confidence)}</span>
         </div>
         <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
@@ -65,7 +65,7 @@ function ResolutionCard({
 
       {/* Reasoning */}
       <div>
-        <p className="text-xs text-muted uppercase tracking-wider mb-2">AI Reasoning</p>
+        <p className="text-xs text-muted uppercase tracking-wider mb-2">Resolution Reasoning</p>
         <p className="text-sm text-foreground leading-relaxed">{resolution.reasoning}</p>
       </div>
 
@@ -96,7 +96,7 @@ function ResolutionCard({
       <div className="p-3 rounded-lg bg-surface-2 border border-border">
         <p className="text-xs text-muted">
           <span className="text-cyan font-medium">Validator Consensus: </span>
-          This outcome was determined by GenLayer&apos;s Optimistic Democracy — a leader validator proposed the resolution and peer validators independently verified the reasoning using the Equivalence Principle before finalization.
+          This outcome was determined only after validators agreed on the fetched evidence through GenLayer&apos;s strict equality principle.
         </p>
       </div>
 
@@ -118,15 +118,15 @@ export default function ResolutionPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Resolution Center</h1>
         <p className="text-sm text-muted mt-1">
-          AI reasoning reports and validator consensus records for resolved markets.
+          Deterministic resolution reports and validator consensus records for resolved markets.
         </p>
       </div>
 
       {/* How Resolution Works */}
       <div className="p-4 rounded-xl border border-electric-blue/20 bg-electric-blue/5">
-        <p className="text-xs text-electric-blue font-medium mb-1">How AI Resolution Works</p>
+        <p className="text-xs text-electric-blue font-medium mb-1">How Resolution Works</p>
         <p className="text-xs text-muted leading-relaxed">
-          When a market reaches its deadline, the PredictIQResolver Intelligent Contract gathers evidence from the specified sources using <code className="text-cyan">gl.nondet.web.get()</code>, runs reasoning via <code className="text-cyan">gl.nondet.exec_prompt()</code>, and determines an outcome. GenLayer&apos;s validator network independently verifies the reasoning using the Equivalence Principle — requiring that all validators independently agree on the same outcome before finalization.
+          When a market reaches its deadline, the PredictIQResolver Intelligent Contract fetches the specified sources through <code className="text-cyan">gl.get_webpage()</code> inside <code className="text-cyan">gl.eq_principle_strict_eq()</code>. Once validators agree on the exact evidence payload, deterministic criteria decide the YES or NO outcome.
         </p>
       </div>
 
@@ -140,7 +140,7 @@ export default function ResolutionPage() {
       ) : !resolutions || resolutions.length === 0 ? (
         <EmptyState
           title="No resolutions yet"
-          description="Resolution reports will appear here once markets are resolved by the AI. All reasoning, evidence, and confidence scores are stored on-chain."
+          description="Resolution reports will appear here once markets are resolved. Consensus evidence, reasoning, and confidence scores are stored on-chain."
         />
       ) : (
         <div className="flex flex-col gap-4">

@@ -3,14 +3,12 @@ import Link from "next/link";
 import { useProtocolStats } from "@/hooks/useMarkets";
 import { formatVolume } from "@/lib/format";
 
-const BODY = "color: #a0a0aa"; // silver-grey for body copy against dark bg
-
 const HOW_IT_WORKS = [
   {
     step: "01",
     title: "Create a Market",
     description:
-      "Define a verifiable yes/no question, set resolution criteria, choose a deadline, and provide reference sources for AI resolution.",
+      "Define a verifiable yes/no question, set deterministic resolution criteria, choose a deadline, and provide reference sources.",
   },
   {
     step: "02",
@@ -20,15 +18,15 @@ const HOW_IT_WORKS = [
   },
   {
     step: "03",
-    title: "AI Resolves",
+    title: "Resolver Decides",
     description:
-      "When the deadline passes, PredictIQResolver gathers evidence from the web, reasons through the question, and proposes an outcome.",
+      "When the deadline passes, PredictIQResolver gathers web evidence under strict validator equality and applies the market's deterministic criteria.",
   },
   {
     step: "04",
     title: "Validators Consensus",
     description:
-      "Independent GenLayer validators verify the AI reasoning. Unanimous consensus under the Equivalence Principle finalizes on-chain.",
+      "Independent GenLayer validators agree on the evidence under the Equivalence Principle before the outcome is finalized on-chain.",
   },
   {
     step: "05",
@@ -42,17 +40,17 @@ const WHY_PREDICTIQ = [
   {
     title: "No Oracle Dependency",
     description:
-      "Traditional markets rely on centralized oracles. PredictIQ embeds AI reasoning directly in the contract, no third party needed.",
+      "Traditional markets rely on centralized oracles. PredictIQ resolves from validator-agreed evidence and deterministic criteria.",
   },
   {
-    title: "Verifiable AI Reasoning",
+    title: "Verifiable Resolution",
     description:
-      "Every resolution includes a full trace: evidence gathered, sources cited, confidence score, and reasoning, all stored on-chain.",
+      "Every resolution includes evidence sources, confidence score, and deterministic reasoning stored on-chain.",
   },
   {
     title: "Validator Consensus",
     description:
-      "No single AI call determines an outcome. Multiple GenLayer validators independently verify before finalization.",
+      "No single external response determines an outcome. Multiple GenLayer validators agree on the fetched evidence before finalization.",
   },
   {
     title: "Fully Transparent",
@@ -147,7 +145,7 @@ export default function LandingPage() {
                 className="text-base md:text-lg leading-relaxed"
                 style={{ color: "#b8b8c4" }}
               >
-                AI-powered prediction markets on GenLayer.<br />
+                Prediction markets on GenLayer.<br />
                 Evidence-based resolution, validator consensus,
               </p>
               <p
@@ -250,7 +248,7 @@ export default function LandingPage() {
           {[
             {
               title: "Intelligent Contracts",
-              body: "Python contracts with native LLM inference and web access via gl.exec_prompt() and gl.get_webpage(). AI is a first-class primitive.",
+              body: "Python contracts can fetch external web evidence and bring it into consensus with equality principles such as strict equality.",
               color: "#d8d8e4",
             },
             {
@@ -260,7 +258,7 @@ export default function LandingPage() {
             },
             {
               title: "Non-Determinism Handled",
-              body: "GenVM's execution model separates AI/web operations from deterministic state transitions, achieving consensus without identical outputs.",
+              body: "GenVM's execution model lets contracts place web access behind equality principles before deterministic state transitions.",
               color: "#a8a8b8",
             },
           ].map(({ title, body, color }) => (

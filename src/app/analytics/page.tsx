@@ -4,7 +4,6 @@ import { useAllResolutions } from "@/hooks/useResolution";
 import Card from "@/components/ui/Card";
 import { LoadingState } from "@/components/ui/Spinner";
 import { formatVolume, formatPercent } from "@/lib/format";
-import type { Market } from "@/types";
 
 function StatBox({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -146,7 +145,7 @@ export default function AnalyticsPage() {
       {/* Resolution Stats */}
       {allResolutions.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-xs text-muted uppercase tracking-widest">AI Resolution Stats</h2>
+          <h2 className="text-xs text-muted uppercase tracking-widest">Resolution Stats</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <StatBox
               label="YES Outcomes"

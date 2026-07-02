@@ -3,6 +3,8 @@ from genlayer import *
 import json
 from dataclasses import dataclass
 
+MAX_SOURCE_CHARS = 3000
+
 
 @allow_storage
 @dataclass
@@ -34,50 +36,27 @@ class PredictIQResolver(gl.Contract):
     ) -> None:
         sources_mem = gl.storage.copy_to_memory(sources)
 
-        def leader_fn() -> str:
-            evidence_parts = []
+        def fetch_sources() -> str:
+            fetched_sources = []
             for url in sources_mem:
                 try:
                     response = gl.get_webpage(url, mode="text")
-                    evidence_parts.append(f"[{url}]\n{response[:3000]}")
+                    fetched_sources.append({
+                        "url": url,
+                        "body": str(response)[:MAX_SOURCE_CHARS],
+                        "ok": True,
+                    })
                 except Exception:
-                    evidence_parts.append(f"[{url}]\n(Could not fetch)")
+                    fetched_sources.append({
+                        "url": url,
+                        "body": "",
+                        "ok": False,
+                    })
+            return json.dumps(fetched_sources, sort_keys=True)
 
-            evidence = "\n\n---\n\n".join(evidence_parts) if evidence_parts else "(No sources provided)"
-
-            prompt = f"""You are an impartial AI resolver for a prediction market.
-
-QUESTION: {question}
-
-RESOLUTION CRITERIA: {resolution_criteria}
-
-EVIDENCE GATHERED:
-{evidence}
-
-INSTRUCTIONS:
-Determine whether the event resolves YES or NO based strictly on the resolution criteria.
-Assign a confidence score 0.0–1.0. List only URLs that were actually useful.
-
-Respond ONLY with valid JSON:
-{{"outcome": "YES" or "NO", "confidence": 0.0-1.0, "sources_used": ["url1"], "reasoning": "step-by-step explanation"}}"""
-
-            result = gl.exec_prompt(prompt)
-            parsed = json.loads(result)
-            return json.dumps(parsed, sort_keys=True)
-
-        def validator_fn(leaders_result) -> bool:
-            if not isinstance(leaders_result, gl.vm.Return):
-                return False
-            try:
-                validator_raw = leader_fn()
-                validator_data = json.loads(validator_raw)
-                leader_data = json.loads(leaders_result.calldata)
-                return leader_data.get("outcome") == validator_data.get("outcome")
-            except Exception:
-                return False
-
-        raw = gl.eq_principle_strict_eq(leader_fn)
-        result = json.loads(raw)
+        raw_sources = gl.eq_principle_strict_eq(fetch_sources)
+        fetched = json.loads(raw_sources)
+        result = self._resolve_from_evidence(resolution_criteria, fetched)
 
         sources_array = DynArray[str]()
         for s in result.get("sources_used", []):
@@ -92,6 +71,11 @@ Respond ONLY with valid JSON:
             resolved_at="resolved",
         )
         self.resolutions[market_id] = resolution
+        gl.call_contract(
+            self.factory_address,
+            "set_market_resolved",
+            [int(market_id), str(result.get("outcome", "NO")) == "YES"],
+        )
 
         already_recorded = False
         for mid in self.resolution_ids:
@@ -100,6 +84,76 @@ Respond ONLY with valid JSON:
                 break
         if not already_recorded:
             self.resolution_ids.append(market_id)
+
+    def _resolve_from_evidence(self, resolution_criteria: str, fetched: list) -> dict:
+        criteria = resolution_criteria.lower()
+        evidence = ""
+        sources_used = []
+        for item in fetched:
+            if isinstance(item, dict) and item.get("ok"):
+                body = str(item.get("body", ""))
+                evidence += "\n" + body.lower()
+                url = item.get("url")
+                if isinstance(url, str):
+                    sources_used.append(url)
+
+        yes_terms = self._extract_terms(criteria, "yes terms:")
+        no_terms = self._extract_terms(criteria, "no terms:")
+
+        yes_match = self._all_terms_match(evidence, yes_terms)
+        no_match = self._all_terms_match(evidence, no_terms)
+
+        if len(yes_terms) == 0 and len(no_terms) == 0:
+            return {
+                "outcome": "NO",
+                "confidence": "0.0",
+                "sources_used": sources_used,
+                "reasoning": (
+                    "No automatic resolution was performed. Add deterministic criteria using "
+                    "'YES terms:' and optional 'NO terms:' so validators can verify the "
+                    "same evidence and reach strict equality consensus."
+                ),
+            }
+
+        if yes_match and not no_match:
+            return {
+                "outcome": "YES",
+                "confidence": "1.0",
+                "sources_used": sources_used,
+                "reasoning": "Validators agreed on the fetched evidence and all required YES terms were present.",
+            }
+
+        return {
+            "outcome": "NO",
+            "confidence": "1.0" if no_match else "0.5",
+            "sources_used": sources_used,
+            "reasoning": "Validators agreed on the fetched evidence and the deterministic YES rule was not satisfied.",
+        }
+
+    def _extract_terms(self, criteria: str, marker: str) -> list:
+        marker_index = criteria.find(marker)
+        if marker_index < 0:
+            return []
+        value = criteria[marker_index + len(marker):]
+        stop_markers = [" yes terms:", " no terms:"]
+        for stop in stop_markers:
+            stop_index = value.find(stop)
+            if stop_index > 0:
+                value = value[:stop_index]
+        terms = []
+        for raw_term in value.split(","):
+            term = raw_term.strip().strip(".;: \n\t\"'")
+            if len(term) > 0:
+                terms.append(term)
+        return terms
+
+    def _all_terms_match(self, evidence: str, terms: list) -> bool:
+        if len(terms) == 0:
+            return False
+        for term in terms:
+            if term not in evidence:
+                return False
+        return True
 
     @gl.public.view
     def get_resolution(self, market_id: u256) -> dict:

@@ -5,7 +5,7 @@ import MarketCard from "@/components/MarketCard";
 import { LoadingState, EmptyState } from "@/components/ui/Spinner";
 import Button from "@/components/ui/Button";
 import Link from "next/link";
-import type { Market, MarketCategory } from "@/types";
+import type { Market } from "@/types";
 
 const CATEGORIES: { id: string; label: string }[] = [
   { id: "all", label: "All" },

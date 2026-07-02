@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useWallet } from "@/hooks/useWallet";
 import { useProfile, useHasProfile, useProfileActions } from "@/hooks/useProfile";
 import { usePortfolio } from "@/hooks/usePortfolio";
@@ -7,7 +7,7 @@ import { useAllMarkets } from "@/hooks/useMarkets";
 import Button from "@/components/ui/Button";
 import TxStatus from "@/components/ui/TxStatus";
 import { EmptyState } from "@/components/ui/Spinner";
-import { formatAddress, formatGEN } from "@/lib/format";
+import { formatAddress } from "@/lib/format";
 
 function Avatar({
   src,
@@ -55,7 +55,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 
 export default function ProfilePage() {
   const { account, connect } = useWallet();
-  const { data: profile, isLoading: profileLoading } = useProfile(account);
+  const { data: profile } = useProfile(account);
   const { data: hasProfile } = useHasProfile(account);
   const { data: positions } = usePortfolio(account);
   const { data: allMarkets } = useAllMarkets();
@@ -69,25 +69,16 @@ export default function ProfilePage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Populate form when editing existing profile
-  useEffect(() => {
-    if (profile && editing) {
-      setForm({
-        username: profile.username,
-        bio: profile.bio,
-        twitter_handle: profile.twitter_handle,
-      });
-      setAvatarPreview(profile.avatar_url);
-    }
-  }, [profile, editing]);
-
-  // Reset to view mode after successful tx
-  useEffect(() => {
-    if (txState === "finalized") {
-      setEditing(false);
-      setAvatarFile(null);
-    }
-  }, [txState]);
+  function startEditing() {
+    if (!profile) return;
+    setForm({
+      username: profile.username,
+      bio: profile.bio,
+      twitter_handle: profile.twitter_handle,
+    });
+    setAvatarPreview(profile.avatar_url);
+    setEditing(true);
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -134,10 +125,15 @@ export default function ProfilePage() {
     }
 
     const handle = form.twitter_handle.replace(/^@/, "");
+    let saved = false;
     if (hasProfile) {
-      await updateProfile(form.bio, avatarUrl, handle);
+      saved = await updateProfile(form.bio, avatarUrl, handle);
     } else {
-      await createProfile(form.username, form.bio, avatarUrl, handle);
+      saved = await createProfile(form.username, form.bio, avatarUrl, handle);
+    }
+    if (saved) {
+      setEditing(false);
+      setAvatarFile(null);
     }
   }
 
@@ -192,7 +188,7 @@ export default function ProfilePage() {
               </a>
             )}
           </div>
-          <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+          <Button size="sm" variant="secondary" onClick={startEditing}>
             Edit
           </Button>
         </div>

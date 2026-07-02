@@ -164,7 +164,7 @@ export default function MarketDetailPage({
           {resolution && (
             <Card>
               <p className="text-xs text-muted uppercase tracking-wider mb-3">
-                AI Resolution Report
+                Resolution Report
               </p>
               <div className="flex gap-3 mb-3 flex-wrap">
                 <Badge variant={resolution.outcome === "YES" ? "yes" : "no"}>

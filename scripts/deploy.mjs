@@ -1,14 +1,24 @@
 import { readFileSync, writeFileSync } from "fs";
 import { scryptSync, createDecipheriv } from "crypto";
-import { keccak256, toHex, encodePacked, toBytes } from "viem";
+import { keccak256 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { createWalletClient, createPublicClient, http } from "viem";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RPC = "https://studio.genlayer.com/api";
 const HEADERS = { "Content-Type": "application/json", "User-Agent": "genlayer-js/1.1.8" };
+
+function readEnvFile(envPath) {
+  const values = {};
+  try {
+    for (const line of readFileSync(envPath, "utf8").split("\n")) {
+      const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if (match) values[match[1]] = match[2];
+    }
+  } catch {}
+  return values;
+}
 
 function decryptKeystore(keystorePath, password) {
   const ks = JSON.parse(readFileSync(keystorePath, "utf8"));
@@ -57,37 +67,14 @@ async function pollFinalized(hash) {
   throw new Error("Timeout after 10 min");
 }
 
-async function deployContract(privateKey, account, contractPath, args = []) {
+async function deployContract(privateKey, contractPath, args = []) {
   const name = path.basename(contractPath);
   const code = readFileSync(contractPath, "utf8");
-  const codeHex = Buffer.from(code).toString("hex");
-
-  // Get nonce
-  const nonce = await rpc("eth_getTransactionCount", [account.address, "latest"]);
-
-  // Build GenLayer deploy calldata using genlayer-js format
-  // We send via gen_sendTransaction with the contract deploy format
-  const payload = {
-    jsonrpc: "2.0",
-    method: "gen_sendTransaction",
-    params: [{
-      from: account.address,
-      to: null,
-      data: {
-        contract_code: codeHex,
-        calldata: Buffer.from(JSON.stringify({ args })).toString("hex"),
-      },
-      value: "0x0",
-      nonce: nonce,
-    }],
-    id: 1,
-  };
 
   // Sign and send using the genlayer-js SDK approach but with fetch
   // Actually: use the genlayer-js client just for signing/sending, handle polling ourselves
   const { createClient, createAccount } = await import("genlayer-js");
   const { studionet } = await import("genlayer-js/chains");
-  const { TransactionStatus } = await import("genlayer-js/types");
 
   const gl = createClient({ chain: studionet, account: createAccount(privateKey) });
 
@@ -111,22 +98,24 @@ async function main() {
   console.log(`\nMarketFactory (reusing): ${factoryAddress}`);
 
   const resolverAddress = await deployContract(
-    privateKey, account,
+    privateKey,
     path.join(contractsDir, "PredictIQResolver.py"),
     [factoryAddress]
   );
 
   const rewardDistributorAddress = await deployContract(
-    privateKey, account,
+    privateKey,
     path.join(contractsDir, "RewardDistributor.py"),
     [factoryAddress]
   );
 
+  const currentEnv = readEnvFile(path.join(__dirname, "../.env.local"));
   const envContent = `# GenLayer StudioNet Contract Addresses
 NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=${factoryAddress}
 NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=${factoryAddress}
 NEXT_PUBLIC_RESOLVER_ADDRESS=${resolverAddress}
 NEXT_PUBLIC_REWARD_DISTRIBUTOR_ADDRESS=${rewardDistributorAddress}
+NEXT_PUBLIC_USER_PROFILE_ADDRESS=${currentEnv.NEXT_PUBLIC_USER_PROFILE_ADDRESS ?? ""}
 `;
   writeFileSync(path.join(__dirname, "../.env.local"), envContent, "utf8");
 

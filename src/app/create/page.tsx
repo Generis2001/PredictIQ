@@ -184,14 +184,14 @@ export default function CreateMarketPage() {
             onChange={(e) =>
               setForm({ ...form, resolution_criteria: e.target.value })
             }
-            placeholder="This market resolves YES if Bitcoin's closing price on any major exchange (Coinbase, Binance, or Kraken) exceeds $100,000 USD at any point before December 31, 2025 23:59 UTC."
+            placeholder="This market resolves YES when the fetched evidence contains the required deterministic terms. YES terms: bitcoin, 100000, usd. NO terms: below 100000."
             className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-electric-blue resize-none"
           />
           {errors.resolution_criteria && (
             <p className="text-xs text-no mt-1">{errors.resolution_criteria}</p>
           )}
           <p className="text-xs text-muted mt-1">
-            Be specific. This is what the AI will use to determine the outcome.
+            Be specific. Include YES terms and optional NO terms as comma-separated phrases so validators can verify the same rule.
           </p>
         </Card>
 
@@ -277,7 +277,7 @@ export default function CreateMarketPage() {
             ))}
           </div>
           <p className="text-xs text-muted mt-1">
-            The AI resolver will fetch these URLs as evidence during resolution.
+            The resolver fetches these URLs under strict validator equality before applying deterministic criteria.
           </p>
         </Card>
 

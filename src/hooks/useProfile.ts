@@ -49,7 +49,7 @@ export function useProfileActions(account: `0x${string}` | undefined) {
   const [error, setError] = useState<string | null>(null);
 
   const execute = useCallback(
-    async (functionName: string, args: string[]) => {
+    async (functionName: string, args: string[]): Promise<boolean> => {
       if (!account) throw new Error("Wallet not connected");
       setTxState("pending");
       setError(null);
@@ -69,9 +69,11 @@ export function useProfileActions(account: `0x${string}` | undefined) {
         setTxState("finalized");
 
         await qc.invalidateQueries({ queryKey: ["profile"] });
+        return true;
       } catch (e) {
         setError(e instanceof Error ? e.message : "Transaction failed");
         setTxState("error");
+        return false;
       }
     },
     [account, qc]
