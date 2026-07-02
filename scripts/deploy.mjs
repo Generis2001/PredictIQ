@@ -8,8 +8,6 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RPC = "https://studio.genlayer.com/api";
 const HEADERS = { "Content-Type": "application/json", "User-Agent": "genlayer-js/1.1.8" };
-const DEFAULT_FACTORY_ADDRESS = "0xe3963263BB2529D13E65Ef43b9FdDf57768d9Ce2";
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 function loadEnv(envPath) {
   try {
@@ -77,12 +75,6 @@ function resolvePrivateKey() {
   );
 }
 
-function getFactoryAddress(currentEnv) {
-  const configured = process.env.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS || currentEnv.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS;
-  if (configured && configured !== ZERO_ADDRESS) return configured;
-  return DEFAULT_FACTORY_ADDRESS;
-}
-
 async function rpc(method, params) {
   const res = await fetch(RPC, {
     method: "POST",
@@ -102,9 +94,27 @@ async function pollFinalized(hash) {
     process.stdout.write(`\r  status: ${tx.status}          `);
     if (tx.status === "FINALIZED" || tx.status === "ACCEPTED") {
       const addr = tx?.data?.contract_address;
-      if (!addr) throw new Error("Finalized but no contract_address");
+      if (!addr) throw new Error("Finalized but no contract_address in tx.data");
       console.log(`\n  address: ${addr}`);
       return addr;
+    }
+    if (tx.status === "CANCELED" || tx.status === "UNDETERMINED") {
+      const err = tx?.consensus_data?.leader_receipt?.[0]?.result;
+      throw new Error(`Transaction ${tx.status}: ${JSON.stringify(err)}`);
+    }
+  }
+  throw new Error("Timeout after 10 min");
+}
+
+async function pollTx(hash) {
+  for (let i = 0; i < 120; i++) {
+    await new Promise(r => setTimeout(r, 5000));
+    const tx = await rpc("eth_getTransactionByHash", [hash]);
+    if (!tx) continue;
+    process.stdout.write(`\r  status: ${tx.status}          `);
+    if (tx.status === "FINALIZED" || tx.status === "ACCEPTED") {
+      console.log("");
+      return;
     }
     if (tx.status === "CANCELED" || tx.status === "UNDETERMINED") {
       const err = tx?.consensus_data?.leader_receipt?.[0]?.result;
@@ -118,8 +128,6 @@ async function deployContract(privateKey, contractPath, args = []) {
   const name = path.basename(contractPath);
   const code = readFileSync(contractPath, "utf8");
 
-  // Sign and send using the genlayer-js SDK approach but with fetch
-  // Actually: use the genlayer-js client just for signing/sending, handle polling ourselves
   const { createClient, createAccount } = await import("genlayer-js");
   const { studionet } = await import("genlayer-js/chains");
 
@@ -128,21 +136,43 @@ async function deployContract(privateKey, contractPath, args = []) {
   console.log(`\nDeploying ${name}...`);
   const hash = await gl.deployContract({ code, args, value: BigInt(0) });
   console.log(`  tx: ${hash}`);
-  console.log(`  polling...`);
   return await pollFinalized(hash);
+}
+
+async function callContract(privateKey, contractAddress, functionName, args) {
+  const { createClient, createAccount } = await import("genlayer-js");
+  const { studionet } = await import("genlayer-js/chains");
+
+  const gl = createClient({ chain: studionet, account: createAccount(privateKey) });
+
+  console.log(`\nCalling ${functionName}...`);
+  const hash = await gl.writeContract({
+    address: contractAddress,
+    functionName,
+    args,
+    value: BigInt(0),
+  });
+  console.log(`  tx: ${hash}`);
+  await pollTx(hash);
 }
 
 async function main() {
   const currentEnv = readEnvFile(path.join(__dirname, "../.env.local"));
   const privateKey = resolvePrivateKey();
   const account = privateKeyToAccount(privateKey);
+  const deployerAddr = account.address.toLowerCase();
   console.log(`  account: ${account.address}`);
 
   const contractsDir = path.join(__dirname, "../contracts");
 
-  // MarketFactory is reused; set NEXT_PUBLIC_MARKET_FACTORY_ADDRESS to override.
-  const factoryAddress = getFactoryAddress(currentEnv);
-  console.log(`\nMarketFactory (reusing): ${factoryAddress}`);
+  // Deploy MarketFactory first, using the deployer address as a temporary
+  // resolver placeholder. This lets us call set_resolver after the real
+  // resolver is deployed, resolving the circular dependency.
+  const factoryAddress = await deployContract(
+    privateKey,
+    path.join(contractsDir, "MarketFactory.py"),
+    [deployerAddr]
+  );
 
   const resolverAddress = await deployContract(
     privateKey,
@@ -156,12 +186,20 @@ async function main() {
     [factoryAddress]
   );
 
+  // Wire the real resolver into the factory now that we know its address
+  await callContract(privateKey, factoryAddress, "set_resolver", [resolverAddress]);
+  console.log(`  resolver wired: ${resolverAddress}`);
+
+  const userProfileAddress = currentEnv.NEXT_PUBLIC_USER_PROFILE_ADDRESS ?? "";
+  const deployerKey = currentEnv.DEPLOYER_PRIVATE_KEY ?? privateKey;
+
   const envContent = `# GenLayer StudioNet Contract Addresses
 NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=${factoryAddress}
 NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=${factoryAddress}
 NEXT_PUBLIC_RESOLVER_ADDRESS=${resolverAddress}
 NEXT_PUBLIC_REWARD_DISTRIBUTOR_ADDRESS=${rewardDistributorAddress}
-NEXT_PUBLIC_USER_PROFILE_ADDRESS=${currentEnv.NEXT_PUBLIC_USER_PROFILE_ADDRESS ?? ""}
+NEXT_PUBLIC_USER_PROFILE_ADDRESS=${userProfileAddress}
+DEPLOYER_PRIVATE_KEY=${deployerKey}
 `;
   writeFileSync(path.join(__dirname, "../.env.local"), envContent, "utf8");
 
@@ -169,6 +207,7 @@ NEXT_PUBLIC_USER_PROFILE_ADDRESS=${currentEnv.NEXT_PUBLIC_USER_PROFILE_ADDRESS ?
   console.log(`MarketFactory:      ${factoryAddress}`);
   console.log(`PredictIQResolver:  ${resolverAddress}`);
   console.log(`RewardDistributor:  ${rewardDistributorAddress}`);
+  console.log(`UserProfile:        ${userProfileAddress} (unchanged)`);
   console.log("\n.env.local updated.");
 }
 

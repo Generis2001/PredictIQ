@@ -199,8 +199,9 @@ class MarketFactory(gl.Contract):
 
     @gl.public.write
     def set_resolver(self, new_resolver: str) -> None:
-        assert str(gl.message.sender_address) == self.resolver_address or self.resolver_address == str(gl.message.sender_address), "Unauthorized"
-        self.resolver_address = new_resolver
+        sender = str(gl.message.sender_address).lower()
+        assert sender == self.resolver_address.lower(), "Unauthorized"
+        self.resolver_address = new_resolver.lower()
 
     @gl.public.write
     def set_market_resolved(self, market_id: u256, outcome: bool) -> None:
