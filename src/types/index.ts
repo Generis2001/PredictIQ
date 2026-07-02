@@ -31,6 +31,7 @@ export interface Position {
   no_shares: number;
   avg_yes_price: number;
   avg_no_price: number;
+  claimed?: boolean;
 }
 
 export interface Resolution {

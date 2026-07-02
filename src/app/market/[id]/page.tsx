@@ -3,7 +3,7 @@ import { use, useState } from "react";
 import { useMarket } from "@/hooks/useMarkets";
 import { useUserPosition } from "@/hooks/usePortfolio";
 import { useTrading } from "@/hooks/useTrading";
-import { useResolution } from "@/hooks/useResolution";
+import { useResolution, useResolveMarket } from "@/hooks/useResolution";
 import { useWallet } from "@/hooks/useWallet";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -36,9 +36,17 @@ export default function MarketDetailPage({
   const { data: resolution } = useResolution(marketId);
   const { txState, txHash, error, buyYes, buyNo, sellYes, sellNo, claimReward, reset } =
     useTrading(account);
+  const {
+    txState: resolveTxState,
+    txHash: resolveTxHash,
+    error: resolveError,
+    resolveMarket,
+    reset: resolveReset,
+  } = useResolveMarket(account);
 
   const [tab, setTab] = useState<"buy-yes" | "buy-no" | "sell">("buy-yes");
   const [amount, setAmount] = useState("");
+  const [now] = useState(() => Math.floor(Date.now() / 1000));
 
   if (isLoading) return <LoadingState message="Loading market..." />;
   if (!market)
@@ -59,6 +67,7 @@ export default function MarketDetailPage({
   const yesPrice = calcYesPrice(market.yes_pool, market.no_pool);
   const noPrice = calcNoPrice(market.yes_pool, market.no_pool);
   const total = Number(market.yes_pool) + Number(market.no_pool);
+  const isExpired = now > market.deadline;
 
   const handleTrade = async () => {
     if (!amount || isNaN(parseFloat(amount))) return;
@@ -66,14 +75,12 @@ export default function MarketDetailPage({
     reset();
     if (tab === "buy-yes") await buyYes(marketId, wei);
     else if (tab === "buy-no") await buyNo(marketId, wei);
-    else if (tab === "sell") {
-      if (position?.yes_shares && position.yes_shares > 0) {
-        await sellYes(marketId, BigInt(position.yes_shares));
-      } else if (position?.no_shares && position.no_shares > 0) {
-        await sellNo(marketId, BigInt(position.no_shares));
-      }
-    }
     setAmount("");
+  };
+
+  const handleResolve = () => {
+    resolveReset();
+    resolveMarket(marketId, market.question, market.resolution_criteria, market.sources ?? []);
   };
 
   return (
@@ -241,11 +248,11 @@ export default function MarketDetailPage({
                   </span>
                 </div>
               )}
-              {market.resolved && (
+              {market.resolved && !position.claimed && (
                 <Button
                   className="w-full mt-3"
                   variant="primary"
-                  onClick={() => claimReward(marketId)}
+                  onClick={() => { reset(); claimReward(marketId); }}
                   loading={
                     ["pending", "proposing", "committing", "revealing"].includes(txState)
                   }
@@ -253,11 +260,44 @@ export default function MarketDetailPage({
                   Claim Reward
                 </Button>
               )}
+              {market.resolved && position.claimed && (
+                <p className="text-xs text-yes mt-3 text-center">Reward claimed</p>
+              )}
             </Card>
           )}
 
-          {/* Trade Panel */}
-          {!market.resolved && (
+          {/* Resolve Panel — expired but not yet resolved */}
+          {isExpired && !market.resolved && (
+            <Card>
+              <p className="text-xs text-muted uppercase tracking-wider mb-2">
+                Resolve Market
+              </p>
+              <p className="text-xs text-muted mb-3 leading-relaxed">
+                This market has passed its deadline. Anyone can trigger on-chain
+                resolution — validators will fetch the sources and apply the
+                deterministic criteria.
+              </p>
+              {account ? (
+                <Button
+                  className="w-full"
+                  variant="primary"
+                  onClick={handleResolve}
+                  loading={["pending", "proposing", "committing", "revealing"].includes(resolveTxState)}
+                  disabled={resolveTxState === "finalized"}
+                >
+                  {resolveTxState === "finalized" ? "Resolved" : "Resolve Market"}
+                </Button>
+              ) : (
+                <Button className="w-full" onClick={connect}>
+                  Connect Wallet to Resolve
+                </Button>
+              )}
+              <TxStatus state={resolveTxState} error={resolveError} hash={resolveTxHash} />
+            </Card>
+          )}
+
+          {/* Trade Panel — only while market is active (not expired, not resolved) */}
+          {!market.resolved && !isExpired && (
             <Card>
               <p className="text-xs text-muted uppercase tracking-wider mb-3">
                 Place Trade
@@ -352,19 +392,27 @@ export default function MarketDetailPage({
                 <div className="flex flex-col gap-3">
                   {position && (position.yes_shares > 0 || position.no_shares > 0) ? (
                     <>
-                      <p className="text-xs text-muted">
-                        Sell all shares in your current position.
-                      </p>
-                      <Button
-                        variant="secondary"
-                        className="w-full"
-                        onClick={handleTrade}
-                        loading={
-                          ["pending", "proposing", "committing", "revealing"].includes(txState)
-                        }
-                      >
-                        Sell Position
-                      </Button>
+                      <p className="text-xs text-muted">Sell all shares in your position.</p>
+                      {position.yes_shares > 0 && (
+                        <Button
+                          variant="secondary"
+                          className="w-full"
+                          onClick={() => { reset(); sellYes(marketId, BigInt(position.yes_shares)); }}
+                          loading={["pending", "proposing", "committing", "revealing"].includes(txState)}
+                        >
+                          Sell {position.yes_shares} YES shares
+                        </Button>
+                      )}
+                      {position.no_shares > 0 && (
+                        <Button
+                          variant="secondary"
+                          className="w-full"
+                          onClick={() => { reset(); sellNo(marketId, BigInt(position.no_shares)); }}
+                          loading={["pending", "proposing", "committing", "revealing"].includes(txState)}
+                        >
+                          Sell {position.no_shares} NO shares
+                        </Button>
+                      )}
                     </>
                   ) : (
                     <p className="text-xs text-muted text-center py-4">

@@ -310,6 +310,7 @@ class MarketFactory(gl.Contract):
             "no_shares": int(pos.no_shares),
             "avg_yes_price": int(pos.yes_cost) // int(pos.yes_shares) if int(pos.yes_shares) > 0 else 0,
             "avg_no_price": int(pos.no_cost) // int(pos.no_shares) if int(pos.no_shares) > 0 else 0,
+            "claimed": bool(pos.claimed),
         }
 
     @gl.public.view
@@ -330,6 +331,7 @@ class MarketFactory(gl.Contract):
                     "no_shares": int(pos.no_shares),
                     "avg_yes_price": int(pos.yes_cost) // int(pos.yes_shares) if int(pos.yes_shares) > 0 else 0,
                     "avg_no_price": int(pos.no_cost) // int(pos.no_shares) if int(pos.no_shares) > 0 else 0,
+                    "claimed": bool(pos.claimed),
                 })
         return result
 

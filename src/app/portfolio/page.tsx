@@ -30,6 +30,7 @@ function PositionRow({
 
   const isWinner =
     market.resolved &&
+    !position.claimed &&
     ((market.outcome === true && position.yes_shares > 0) ||
       (market.outcome === false && position.no_shares > 0));
 
@@ -124,6 +125,7 @@ export default function PortfolioPage() {
   const claimablePositions = closedPositions.filter((p) => {
     const m = marketMap.get(p.market_id);
     if (!m) return false;
+    if (p.claimed) return false;
     return (
       (m.outcome === true && p.yes_shares > 0) ||
       (m.outcome === false && p.no_shares > 0)
