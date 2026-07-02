@@ -11,7 +11,7 @@ export function usePortfolio(account: string | undefined) {
       const result = await client.readContract({
         address: PREDICTION_MARKET_ADDRESS,
         functionName: "get_user_positions",
-        args: [account!],
+        args: [account!.toLowerCase()],
       });
       return ((result as unknown) as Position[]) ?? [];
     },
@@ -29,7 +29,7 @@ export function useUserPosition(account: string | undefined, marketId: number | 
       const result = await client.readContract({
         address: PREDICTION_MARKET_ADDRESS,
         functionName: "get_position",
-        args: [account, marketId],
+        args: [account.toLowerCase(), marketId],
       });
       return ((result as unknown) as Position) ?? null;
     },

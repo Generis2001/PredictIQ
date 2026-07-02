@@ -98,7 +98,7 @@ class MarketFactory(gl.Contract):
         market.total_volume = market.total_volume + amount
         self.markets[market_id] = market
 
-        buyer = str(gl.message.sender_address)
+        buyer = str(gl.message.sender_address).lower()
         self._record_position_yes(buyer, market_id, shares, amount)
         self._track_trader(buyer)
         return shares
@@ -119,14 +119,14 @@ class MarketFactory(gl.Contract):
         market.total_volume = market.total_volume + amount
         self.markets[market_id] = market
 
-        buyer = str(gl.message.sender_address)
+        buyer = str(gl.message.sender_address).lower()
         self._record_position_no(buyer, market_id, shares, amount)
         self._track_trader(buyer)
         return shares
 
     @gl.public.write
     def sell_yes(self, market_id: u256, shares: u256) -> u256:
-        seller = str(gl.message.sender_address)
+        seller = str(gl.message.sender_address).lower()
         pos = self._get_or_default_position(seller, market_id)
         assert int(pos.yes_shares) >= int(shares), "Insufficient YES shares"
         market = self.markets.get(market_id)
@@ -149,7 +149,7 @@ class MarketFactory(gl.Contract):
 
     @gl.public.write
     def sell_no(self, market_id: u256, shares: u256) -> u256:
-        seller = str(gl.message.sender_address)
+        seller = str(gl.message.sender_address).lower()
         pos = self._get_or_default_position(seller, market_id)
         assert int(pos.no_shares) >= int(shares), "Insufficient NO shares"
         market = self.markets.get(market_id)
@@ -172,7 +172,7 @@ class MarketFactory(gl.Contract):
 
     @gl.public.write
     def claim_reward(self, market_id: u256) -> u256:
-        claimant = str(gl.message.sender_address)
+        claimant = str(gl.message.sender_address).lower()
         pos = self._get_or_default_position(claimant, market_id)
         assert not pos.claimed, "Already claimed"
 
@@ -303,7 +303,7 @@ class MarketFactory(gl.Contract):
 
     @gl.public.view
     def get_position(self, user: str, market_id: u256) -> dict:
-        pos = self._get_or_default_position(user, market_id)
+        pos = self._get_or_default_position(user.lower(), market_id)
         return {
             "market_id": int(market_id),
             "yes_shares": int(pos.yes_shares),
@@ -315,6 +315,7 @@ class MarketFactory(gl.Contract):
 
     @gl.public.view
     def get_user_positions(self, user: str) -> list:
+        user = user.lower()
         ids = self.user_market_ids.get(user)
         if ids is None:
             return []
