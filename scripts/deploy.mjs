@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { scryptSync, createDecipheriv } from "crypto";
 import { keccak256 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -8,6 +8,19 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RPC = "https://studio.genlayer.com/api";
 const HEADERS = { "Content-Type": "application/json", "User-Agent": "genlayer-js/1.1.8" };
+const DEFAULT_FACTORY_ADDRESS = "0xe3963263BB2529D13E65Ef43b9FdDf57768d9Ce2";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+function loadEnv(envPath) {
+  try {
+    for (const line of readFileSync(envPath, "utf8").split("\n")) {
+      const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if (match && process.env[match[1]] === undefined) {
+        process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
+      }
+    }
+  } catch {}
+}
 
 function readEnvFile(envPath) {
   const values = {};
@@ -34,6 +47,40 @@ function decryptKeystore(keystorePath, password) {
   const decipher = createDecipheriv("aes-128-ctr", dk.slice(0, 16), iv);
   const pk = Buffer.concat([decipher.update(Buffer.from(ks.Crypto.ciphertext, "hex")), decipher.final()]);
   return "0x" + pk.toString("hex");
+}
+
+function resolvePrivateKey() {
+  loadEnv(path.join(__dirname, "../.env.local"));
+
+  const rawPrivateKey = process.env.DEPLOYER_PRIVATE_KEY?.trim();
+  if (rawPrivateKey) {
+    return rawPrivateKey.startsWith("0x") ? rawPrivateKey : `0x${rawPrivateKey}`;
+  }
+
+  const keystorePath = process.env.DEPLOYER_KEYSTORE_PATH?.trim();
+  const keystorePassword = process.env.DEPLOYER_KEYSTORE_PASSWORD;
+  if (keystorePath || keystorePassword) {
+    if (!keystorePath) {
+      throw new Error("DEPLOYER_KEYSTORE_PATH is required when using DEPLOYER_KEYSTORE_PASSWORD");
+    }
+    if (!keystorePassword) {
+      throw new Error("DEPLOYER_KEYSTORE_PASSWORD is required when using DEPLOYER_KEYSTORE_PATH");
+    }
+    if (!existsSync(keystorePath)) {
+      throw new Error(`Keystore not found at ${keystorePath}`);
+    }
+    return decryptKeystore(keystorePath, keystorePassword);
+  }
+
+  throw new Error(
+    "Missing deployer credentials. Set DEPLOYER_PRIVATE_KEY, or set DEPLOYER_KEYSTORE_PATH and DEPLOYER_KEYSTORE_PASSWORD."
+  );
+}
+
+function getFactoryAddress(currentEnv) {
+  const configured = process.env.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS || currentEnv.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS;
+  if (configured && configured !== ZERO_ADDRESS) return configured;
+  return DEFAULT_FACTORY_ADDRESS;
 }
 
 async function rpc(method, params) {
@@ -86,15 +133,15 @@ async function deployContract(privateKey, contractPath, args = []) {
 }
 
 async function main() {
-  console.log("Decrypting keystore...");
-  const privateKey = decryptKeystore("/tmp/deployer-keystore.json", "suisgeneris2001");
+  const currentEnv = readEnvFile(path.join(__dirname, "../.env.local"));
+  const privateKey = resolvePrivateKey();
   const account = privateKeyToAccount(privateKey);
   console.log(`  account: ${account.address}`);
 
   const contractsDir = path.join(__dirname, "../contracts");
 
-  // MarketFactory already deployed successfully
-  const factoryAddress = "0xe3963263BB2529D13E65Ef43b9FdDf57768d9Ce2";
+  // MarketFactory is reused; set NEXT_PUBLIC_MARKET_FACTORY_ADDRESS to override.
+  const factoryAddress = getFactoryAddress(currentEnv);
   console.log(`\nMarketFactory (reusing): ${factoryAddress}`);
 
   const resolverAddress = await deployContract(
@@ -109,7 +156,6 @@ async function main() {
     [factoryAddress]
   );
 
-  const currentEnv = readEnvFile(path.join(__dirname, "../.env.local"));
   const envContent = `# GenLayer StudioNet Contract Addresses
 NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=${factoryAddress}
 NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=${factoryAddress}

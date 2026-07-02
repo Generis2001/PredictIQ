@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { scryptSync, createDecipheriv } from "crypto";
 import { keccak256 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -7,6 +7,17 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RPC = "https://studio.genlayer.com/api";
+
+function loadEnv(envPath) {
+  try {
+    for (const line of readFileSync(envPath, "utf8").split("\n")) {
+      const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if (match && process.env[match[1]] === undefined) {
+        process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
+      }
+    }
+  } catch {}
+}
 
 function decryptKeystore(keystorePath, password) {
   const ks = JSON.parse(readFileSync(keystorePath, "utf8"));
@@ -22,6 +33,34 @@ function decryptKeystore(keystorePath, password) {
   const decipher = createDecipheriv("aes-128-ctr", dk.slice(0, 16), iv);
   const pk = Buffer.concat([decipher.update(Buffer.from(ks.Crypto.ciphertext, "hex")), decipher.final()]);
   return "0x" + pk.toString("hex");
+}
+
+function resolvePrivateKey() {
+  loadEnv(path.join(__dirname, "../.env.local"));
+
+  const rawPrivateKey = process.env.DEPLOYER_PRIVATE_KEY?.trim();
+  if (rawPrivateKey) {
+    return rawPrivateKey.startsWith("0x") ? rawPrivateKey : `0x${rawPrivateKey}`;
+  }
+
+  const keystorePath = process.env.DEPLOYER_KEYSTORE_PATH?.trim();
+  const keystorePassword = process.env.DEPLOYER_KEYSTORE_PASSWORD;
+  if (keystorePath || keystorePassword) {
+    if (!keystorePath) {
+      throw new Error("DEPLOYER_KEYSTORE_PATH is required when using DEPLOYER_KEYSTORE_PASSWORD");
+    }
+    if (!keystorePassword) {
+      throw new Error("DEPLOYER_KEYSTORE_PASSWORD is required when using DEPLOYER_KEYSTORE_PATH");
+    }
+    if (!existsSync(keystorePath)) {
+      throw new Error(`Keystore not found at ${keystorePath}`);
+    }
+    return decryptKeystore(keystorePath, keystorePassword);
+  }
+
+  throw new Error(
+    "Missing deployer credentials. Set DEPLOYER_PRIVATE_KEY, or set DEPLOYER_KEYSTORE_PATH and DEPLOYER_KEYSTORE_PASSWORD."
+  );
 }
 
 async function rpc(method, params) {
@@ -56,8 +95,7 @@ async function pollFinalized(hash) {
 }
 
 async function main() {
-  console.log("Decrypting keystore...");
-  const privateKey = decryptKeystore("/tmp/deployer-keystore.json", "suisgeneris2001");
+  const privateKey = resolvePrivateKey();
   const account = privateKeyToAccount(privateKey);
   console.log(`  account: ${account.address}`);
 
