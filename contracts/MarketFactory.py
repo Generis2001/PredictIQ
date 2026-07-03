@@ -59,6 +59,29 @@ class MarketFactory(gl.Contract):
         assert len(question) >= 10, "Question too short"
         assert len(resolution_criteria) >= 20, "Resolution criteria too short"
 
+        # LLM validates the market is a well-formed binary prediction; validators
+        # must reach comparative-judgment consensus before the market is stored
+        def validate_market() -> str:
+            return gl.exec_prompt(
+                f"You are a prediction market validator. Determine whether the following "
+                f"is a valid binary (YES/NO) prediction market.\n\n"
+                f"Question: {question}\n"
+                f"Resolution criteria: {resolution_criteria}\n\n"
+                f"A valid market must:\n"
+                f"1. Be a clear, unambiguous YES or NO question\n"
+                f"2. Have specific, objectively verifiable resolution criteria\n"
+                f"3. Not be harmful, offensive, or impossible to resolve\n\n"
+                f"Respond with only VALID or INVALID.",
+                return_type=str,
+            )
+
+        validation = gl.eq_principle_prompt_comparative_judgment(
+            validate_market,
+            "The outputs are equivalent if they both say VALID or both say INVALID.",
+        )
+        verdict = self._normalize_label(validation)
+        assert verdict == "VALID", "Market rejected: question or criteria not suitable"
+
         mid = self.market_count
         liq = gl.message.value
         market = Market(
@@ -389,3 +412,9 @@ class MarketFactory(gl.Contract):
             if int(mid) == int(market_id):
                 return
         ids.append(market_id)
+
+    def _normalize_label(self, text: str) -> str:
+        normalized = text.strip().upper().strip(".!?,:;\"'")
+        first_line = normalized.split("\n")[0]
+        first_token = first_line.split(" ")[0]
+        return first_token

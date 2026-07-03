@@ -39,41 +39,63 @@ class PredictIQResolver(gl.Contract):
         now = int(datetime.now(timezone.utc).timestamp())
         assert now >= deadline, "Market deadline has not passed yet"
 
+        question = str(market_data.get("question", ""))
         resolution_criteria = str(market_data.get("resolution_criteria", ""))
         sources_list = [str(s) for s in market_data.get("sources", [])]
 
+        # Step 1: all validators independently fetch the sources and must produce
+        # bit-identical JSON before proceeding — consensus on the raw evidence
         def fetch_sources() -> str:
-            fetched_sources = []
+            fetched = []
             for url in sources_list:
                 try:
-                    response = gl.get_webpage(url, mode="text")
-                    fetched_sources.append({
+                    content = gl.get_webpage(url, mode="text")
+                    fetched.append({
                         "url": url,
-                        "body": str(response)[:MAX_SOURCE_CHARS],
+                        "body": str(content)[:MAX_SOURCE_CHARS],
                         "ok": True,
                     })
                 except Exception:
-                    fetched_sources.append({
-                        "url": url,
-                        "body": "",
-                        "ok": False,
-                    })
-            return json.dumps(fetched_sources, sort_keys=True)
+                    fetched.append({"url": url, "body": "", "ok": False})
+            return json.dumps(fetched, sort_keys=True)
 
-        raw_sources = gl.eq_principle_strict_eq(fetch_sources)
-        fetched = json.loads(raw_sources)
-        result = self._resolve_from_evidence(resolution_criteria, fetched)
+        raw_evidence = gl.eq_principle_strict_eq(fetch_sources)
+
+        # Step 2: each validator runs the LLM against the agreed evidence;
+        # comparative judgment lets validators reach consensus even if phrasing differs
+        def analyze() -> str:
+            return gl.exec_prompt(
+                f"You are a prediction market resolver. Using only the evidence provided, "
+                f"determine whether this market resolves YES or NO.\n\n"
+                f"Market question: {question}\n"
+                f"Resolution criteria: {resolution_criteria}\n"
+                f"Evidence from sources: {raw_evidence}\n\n"
+                f"Respond with only the word YES or NO.",
+                return_type=str,
+            )
+
+        outcome_text = gl.eq_principle_prompt_comparative_judgment(
+            analyze,
+            "The outputs are equivalent if they both say YES or both say NO.",
+        )
+
+        verdict = self._normalize_label(outcome_text)
+        assert verdict == "YES" or verdict == "NO", "Resolver returned unsupported verdict"
+        outcome = verdict == "YES"
 
         sources_array = DynArray[str]()
-        for s in result.get("sources_used", []):
-            if isinstance(s, str):
-                sources_array.append(s)
+        for item in json.loads(raw_evidence):
+            if isinstance(item, dict) and item.get("ok") and item.get("url"):
+                sources_array.append(str(item["url"]))
 
         resolution = MarketResolution(
-            outcome=str(result.get("outcome", "NO")),
-            confidence=str(result.get("confidence", 0.5)),
+            outcome=verdict,
+            confidence="1.0",
             sources=sources_array,
-            reasoning=str(result.get("reasoning", "")),
+            reasoning=(
+                f"Validators first reached strict-equality consensus on fetched evidence, "
+                f"then comparative-judgment consensus on the LLM verdict: {verdict}."
+            ),
             resolved_at="resolved",
         )
         self.resolutions[market_id] = resolution
@@ -82,78 +104,14 @@ class PredictIQResolver(gl.Contract):
         gl.call_contract(
             self.factory_address,
             "set_market_resolved",
-            [int(market_id), str(result.get("outcome", "NO")) == "YES"],
+            [int(market_id), outcome],
         )
 
-    def _resolve_from_evidence(self, resolution_criteria: str, fetched: list) -> dict:
-        criteria = resolution_criteria.lower()
-        evidence = ""
-        sources_used = []
-        for item in fetched:
-            if isinstance(item, dict) and item.get("ok"):
-                body = str(item.get("body", ""))
-                evidence += "\n" + body.lower()
-                url = item.get("url")
-                if isinstance(url, str):
-                    sources_used.append(url)
-
-        yes_terms = self._extract_terms(criteria, "yes terms:")
-        no_terms = self._extract_terms(criteria, "no terms:")
-
-        yes_match = self._all_terms_match(evidence, yes_terms)
-        no_match = self._all_terms_match(evidence, no_terms)
-
-        if len(yes_terms) == 0 and len(no_terms) == 0:
-            return {
-                "outcome": "NO",
-                "confidence": "0.0",
-                "sources_used": sources_used,
-                "reasoning": (
-                    "No automatic resolution was performed. Add deterministic criteria using "
-                    "'YES terms:' and optional 'NO terms:' so validators can verify the "
-                    "same evidence and reach strict equality consensus."
-                ),
-            }
-
-        if yes_match and not no_match:
-            return {
-                "outcome": "YES",
-                "confidence": "1.0",
-                "sources_used": sources_used,
-                "reasoning": "Validators agreed on the fetched evidence and all required YES terms were present.",
-            }
-
-        return {
-            "outcome": "NO",
-            "confidence": "1.0" if no_match else "0.5",
-            "sources_used": sources_used,
-            "reasoning": "Validators agreed on the fetched evidence and the deterministic YES rule was not satisfied.",
-        }
-
-    def _extract_terms(self, criteria: str, marker: str) -> list:
-        marker_index = criteria.find(marker)
-        if marker_index < 0:
-            return []
-        value = criteria[marker_index + len(marker):]
-        stop_markers = [" yes terms:", " no terms:"]
-        for stop in stop_markers:
-            stop_index = value.find(stop)
-            if stop_index > 0:
-                value = value[:stop_index]
-        terms = []
-        for raw_term in value.split(","):
-            term = raw_term.strip().strip(".;: \n\t\"'")
-            if len(term) > 0:
-                terms.append(term)
-        return terms
-
-    def _all_terms_match(self, evidence: str, terms: list) -> bool:
-        if len(terms) == 0:
-            return False
-        for term in terms:
-            if term not in evidence:
-                return False
-        return True
+    def _normalize_label(self, text: str) -> str:
+        normalized = text.strip().upper().strip(".!?,:;\"'")
+        first_line = normalized.split("\n")[0]
+        first_token = first_line.split(" ")[0]
+        return first_token
 
     @gl.public.view
     def get_resolution(self, market_id: u256) -> dict:

@@ -274,8 +274,8 @@ export default function MarketDetailPage({
               </p>
               <p className="text-xs text-muted mb-3 leading-relaxed">
                 This market has passed its deadline. Anyone can trigger on-chain
-                resolution — validators will fetch the sources and apply the
-                deterministic criteria.
+                resolution — validators will fetch the sources, agree on the
+                evidence, then use LLM consensus to determine the outcome.
               </p>
               {account ? (
                 <Button

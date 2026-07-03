@@ -96,7 +96,7 @@ function ResolutionCard({
       <div className="p-3 rounded-lg bg-surface-2 border border-border">
         <p className="text-xs text-muted">
           <span className="text-cyan font-medium">Validator Consensus: </span>
-          This outcome was determined only after validators agreed on the fetched evidence through GenLayer&apos;s strict equality principle.
+          This outcome was determined after validators agreed on the fetched evidence through strict equality and then agreed on the LLM verdict through comparative judgment.
         </p>
       </div>
 
@@ -118,7 +118,7 @@ export default function ResolutionPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Resolution Center</h1>
         <p className="text-sm text-muted mt-1">
-          Deterministic resolution reports and validator consensus records for resolved markets.
+          LLM-backed resolution reports and validator consensus records for resolved markets.
         </p>
       </div>
 
@@ -126,7 +126,7 @@ export default function ResolutionPage() {
       <div className="p-4 rounded-xl border border-electric-blue/20 bg-electric-blue/5">
         <p className="text-xs text-electric-blue font-medium mb-1">How Resolution Works</p>
         <p className="text-xs text-muted leading-relaxed">
-          When a market reaches its deadline, the PredictIQResolver Intelligent Contract fetches the specified sources through <code className="text-cyan">gl.get_webpage()</code> inside <code className="text-cyan">gl.eq_principle_strict_eq()</code>. Once validators agree on the exact evidence payload, deterministic criteria decide the YES or NO outcome.
+          When a market reaches its deadline, the PredictIQResolver Intelligent Contract fetches the specified sources through <code className="text-cyan">gl.get_webpage()</code> inside <code className="text-cyan">gl.eq_principle_strict_eq()</code>. Once validators agree on the exact evidence payload, each validator runs the LLM and GenLayer applies comparative judgment to finalize a shared YES or NO verdict.
         </p>
       </div>
 

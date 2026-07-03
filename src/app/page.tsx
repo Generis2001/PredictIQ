@@ -8,7 +8,7 @@ const HOW_IT_WORKS = [
     step: "01",
     title: "Create a Market",
     description:
-      "Define a verifiable yes/no question, set deterministic resolution criteria, choose a deadline, and provide reference sources.",
+      "Define a verifiable yes/no question, set clear resolution criteria, choose a deadline, and provide reference sources.",
   },
   {
     step: "02",
@@ -20,7 +20,7 @@ const HOW_IT_WORKS = [
     step: "03",
     title: "Resolver Decides",
     description:
-      "When the deadline passes, PredictIQResolver gathers web evidence under strict validator equality and applies the market's deterministic criteria.",
+      "When the deadline passes, PredictIQResolver gathers web evidence under strict validator equality, then validators use LLM consensus to decide YES or NO.",
   },
   {
     step: "04",
@@ -40,12 +40,12 @@ const WHY_PREDICTIQ = [
   {
     title: "No Oracle Dependency",
     description:
-      "Traditional markets rely on centralized oracles. PredictIQ resolves from validator-agreed evidence and deterministic criteria.",
+      "Traditional markets rely on centralized oracles. PredictIQ resolves from validator-agreed evidence and on-chain LLM consensus.",
   },
   {
     title: "Verifiable Resolution",
     description:
-      "Every resolution includes evidence sources, confidence score, and deterministic reasoning stored on-chain.",
+      "Every resolution includes evidence sources, consensus outcome, and on-chain reasoning records.",
   },
   {
     title: "Validator Consensus",
@@ -258,7 +258,7 @@ export default function LandingPage() {
             },
             {
               title: "Non-Determinism Handled",
-              body: "GenVM's execution model lets contracts place web access behind equality principles before deterministic state transitions.",
+              body: "GenVM's execution model lets contracts place web access behind strict equality and LLM output behind comparative-judgment consensus.",
               color: "#a8a8b8",
             },
           ].map(({ title, body, color }) => (

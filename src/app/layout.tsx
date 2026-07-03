@@ -17,7 +17,7 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "PredictIQ — Trade Predictions on GenLayer.",
   description:
-    "Prediction markets on GenLayer. Intelligent Contracts use validator-agreed evidence and deterministic criteria to resolve markets.",
+    "Prediction markets on GenLayer. Intelligent Contracts use validator-agreed evidence and LLM consensus to resolve markets.",
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg",

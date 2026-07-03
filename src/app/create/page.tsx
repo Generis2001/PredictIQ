@@ -184,14 +184,14 @@ export default function CreateMarketPage() {
             onChange={(e) =>
               setForm({ ...form, resolution_criteria: e.target.value })
             }
-            placeholder="This market resolves YES when the fetched evidence contains the required deterministic terms. YES terms: bitcoin, 100000, usd. NO terms: below 100000."
+            placeholder="This market resolves YES if reputable published results or market data from the listed sources show Bitcoin traded above $100,000 USD before December 31, 2025 23:59 UTC."
             className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-electric-blue resize-none"
           />
           {errors.resolution_criteria && (
             <p className="text-xs text-no mt-1">{errors.resolution_criteria}</p>
           )}
           <p className="text-xs text-muted mt-1">
-            Be specific. Include YES terms and optional NO terms as comma-separated phrases so validators can verify the same rule.
+            Be specific and objective. The resolver will use validator-agreed source evidence plus LLM consensus against these criteria.
           </p>
         </Card>
 
@@ -277,7 +277,7 @@ export default function CreateMarketPage() {
             ))}
           </div>
           <p className="text-xs text-muted mt-1">
-            The resolver fetches these URLs under strict validator equality before applying deterministic criteria.
+            The resolver fetches these URLs under strict validator equality before validators apply LLM consensus to the agreed evidence.
           </p>
         </Card>
 
