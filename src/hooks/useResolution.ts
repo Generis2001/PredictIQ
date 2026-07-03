@@ -47,7 +47,7 @@ export function useResolveMarket(account: `0x${string}` | undefined) {
   const [error, setError] = useState<string | null>(null);
 
   const resolveMarket = useCallback(
-    async (marketId: number, question: string, resolutionCriteria: string, sources: string[]) => {
+    async (marketId: number) => {
       if (!account) throw new Error("Wallet not connected");
       setTxState("pending");
       setError(null);
@@ -57,7 +57,7 @@ export function useResolveMarket(account: `0x${string}` | undefined) {
         const hash = (await client.writeContract({
           address: RESOLVER_ADDRESS,
           functionName: "resolve_market",
-          args: [marketId, question, resolutionCriteria, sources] as never,
+          args: [marketId] as never,
           value: BigInt(0),
         })) as string;
         setTxHash(hash);

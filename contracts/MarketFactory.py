@@ -205,9 +205,10 @@ class MarketFactory(gl.Contract):
 
     @gl.public.write
     def set_market_resolved(self, market_id: u256, outcome: bool) -> None:
-        assert str(gl.message.sender_address) == self.resolver_address, "Unauthorized"
+        assert str(gl.message.sender_address).lower() == self.resolver_address, "Unauthorized"
         market = self.markets.get(market_id)
         assert market is not None, "Market not found"
+        assert not market.resolved, "Market already resolved"
         market.resolved = True
         market.outcome = outcome
         self.markets[market_id] = market

@@ -80,7 +80,7 @@ export default function MarketDetailPage({
 
   const handleResolve = () => {
     resolveReset();
-    resolveMarket(marketId, market.question, market.resolution_criteria, market.sources ?? []);
+    resolveMarket(marketId);
   };
 
   return (

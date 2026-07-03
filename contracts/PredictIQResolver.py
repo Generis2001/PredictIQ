@@ -1,6 +1,7 @@
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 from genlayer import *
 import json
+from datetime import datetime, timezone
 from dataclasses import dataclass
 
 MAX_SOURCE_CHARS = 3000
@@ -27,18 +28,23 @@ class PredictIQResolver(gl.Contract):
         self.owner = str(gl.message.sender_address)
 
     @gl.public.write
-    def resolve_market(
-        self,
-        market_id: u256,
-        question: str,
-        resolution_criteria: str,
-        sources: DynArray[str],
-    ) -> None:
-        sources_mem = gl.storage.copy_to_memory(sources)
+    def resolve_market(self, market_id: u256) -> None:
+        assert self.resolutions.get(market_id) is None, "Market already resolved"
+
+        market_data = gl.call_contract(self.factory_address, "get_market", [int(market_id)])
+        assert market_data, "Market not found"
+        assert not bool(market_data.get("resolved", False)), "Market already resolved in factory"
+
+        deadline = int(market_data.get("deadline", 0))
+        now = int(datetime.now(timezone.utc).timestamp())
+        assert now >= deadline, "Market deadline has not passed yet"
+
+        resolution_criteria = str(market_data.get("resolution_criteria", ""))
+        sources_list = [str(s) for s in market_data.get("sources", [])]
 
         def fetch_sources() -> str:
             fetched_sources = []
-            for url in sources_mem:
+            for url in sources_list:
                 try:
                     response = gl.get_webpage(url, mode="text")
                     fetched_sources.append({
@@ -71,19 +77,13 @@ class PredictIQResolver(gl.Contract):
             resolved_at="resolved",
         )
         self.resolutions[market_id] = resolution
+        self.resolution_ids.append(market_id)
+
         gl.call_contract(
             self.factory_address,
             "set_market_resolved",
             [int(market_id), str(result.get("outcome", "NO")) == "YES"],
         )
-
-        already_recorded = False
-        for mid in self.resolution_ids:
-            if int(mid) == int(market_id):
-                already_recorded = True
-                break
-        if not already_recorded:
-            self.resolution_ids.append(market_id)
 
     def _resolve_from_evidence(self, resolution_criteria: str, fetched: list) -> dict:
         criteria = resolution_criteria.lower()
