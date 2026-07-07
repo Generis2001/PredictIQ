@@ -3,7 +3,14 @@ import Link from "next/link";
 import type { Market } from "@/types";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
-import { formatVolume, formatTimeRemaining, calcYesPrice, formatPercent } from "@/lib/format";
+import {
+  formatVolume,
+  formatTimeRemaining,
+  calcYesPrice,
+  calcNoPrice,
+  formatPercent,
+  hasMarketLiquidity,
+} from "@/lib/format";
 
 const categoryColors: Record<string, string> = {
   crypto: "neutral",
@@ -17,6 +24,7 @@ const categoryColors: Record<string, string> = {
 export default function MarketCard({ market }: { market: Market }) {
   const yesPrice = calcYesPrice(market.yes_pool, market.no_pool);
   const noPrice = calcNoPrice(market.yes_pool, market.no_pool);
+  const hasLiquidity = hasMarketLiquidity(market.yes_pool, market.no_pool);
 
   return (
     <Link href={`/market/${market.id}`}>
@@ -38,31 +46,29 @@ export default function MarketCard({ market }: { market: Market }) {
           <div className="flex gap-2 mb-2">
             <div className="flex-1 bg-yes/10 rounded px-2 py-1.5 text-center">
               <div className="text-xs text-muted">YES</div>
-              <div className="text-sm font-bold text-yes">{formatPercent(yesPrice)}</div>
+              <div className="text-sm font-bold text-yes">
+                {yesPrice !== null ? formatPercent(yesPrice) : "—"}
+              </div>
             </div>
             <div className="flex-1 bg-no/10 rounded px-2 py-1.5 text-center">
               <div className="text-xs text-muted">NO</div>
-              <div className="text-sm font-bold text-no">{formatPercent(noPrice)}</div>
+              <div className="text-sm font-bold text-no">
+                {noPrice !== null ? formatPercent(noPrice) : "—"}
+              </div>
             </div>
           </div>
-          <div className="h-1 rounded-full bg-no overflow-hidden">
+          <div className={`h-1 rounded-full overflow-hidden ${hasLiquidity ? "bg-no" : "bg-surface-2"}`}>
             <div
               className="h-full bg-yes rounded-full transition-all"
-              style={{ width: `${yesPrice * 100}%` }}
+              style={{ width: `${yesPrice !== null ? yesPrice * 100 : 0}%` }}
             />
           </div>
           <div className="flex justify-between mt-2 text-xs text-muted">
-            <span>Vol: {formatVolume(market.total_volume)}</span>
+            <span>{hasLiquidity ? `Vol: ${formatVolume(market.total_volume)}` : "No liquidity yet"}</span>
             <span>#{market.id}</span>
           </div>
         </div>
       </Card>
     </Link>
   );
-}
-
-function calcNoPrice(yesPool: number, noPool: number): number {
-  const total = yesPool + noPool;
-  if (total === 0) return 0.5;
-  return yesPool / total;
 }

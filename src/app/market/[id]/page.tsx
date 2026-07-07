@@ -19,6 +19,7 @@ import {
   calcNoPrice,
   formatPercent,
   formatGENAmount,
+  hasMarketLiquidity,
 } from "@/lib/format";
 import Link from "next/link";
 
@@ -67,6 +68,7 @@ export default function MarketDetailPage({
   const yesPrice = calcYesPrice(market.yes_pool, market.no_pool);
   const noPrice = calcNoPrice(market.yes_pool, market.no_pool);
   const total = Number(market.yes_pool) + Number(market.no_pool);
+  const hasLiquidity = hasMarketLiquidity(market.yes_pool, market.no_pool);
   const isExpired = now > market.deadline;
 
   const handleTrade = async () => {
@@ -124,22 +126,26 @@ export default function MarketDetailPage({
             <div className="flex gap-4 mb-3">
               <div className="flex-1 text-center">
                 <div className="text-xs text-muted mb-1">YES</div>
-                <div className="text-2xl font-black text-yes">{formatPercent(yesPrice)}</div>
+                <div className="text-2xl font-black text-yes">
+                  {yesPrice !== null ? formatPercent(yesPrice) : "—"}
+                </div>
               </div>
               <div className="flex-1 text-center">
                 <div className="text-xs text-muted mb-1">NO</div>
-                <div className="text-2xl font-black text-no">{formatPercent(noPrice)}</div>
+                <div className="text-2xl font-black text-no">
+                  {noPrice !== null ? formatPercent(noPrice) : "—"}
+                </div>
               </div>
             </div>
-            <div className="h-2 rounded-full bg-no overflow-hidden">
+            <div className={`h-2 rounded-full overflow-hidden ${hasLiquidity ? "bg-no" : "bg-surface-2"}`}>
               <div
                 className="h-full bg-yes rounded-full transition-all"
-                style={{ width: `${yesPrice * 100}%` }}
+                style={{ width: `${yesPrice !== null ? yesPrice * 100 : 0}%` }}
               />
             </div>
             <div className="flex justify-between mt-2 text-xs text-muted">
               <span>YES Pool: {formatGEN(market.yes_pool)}</span>
-              <span>Total Vol: {formatVolume(total)}</span>
+              <span>{hasLiquidity ? `Total Vol: ${formatVolume(total)}` : "No liquidity yet"}</span>
               <span>NO Pool: {formatGEN(market.no_pool)}</span>
             </div>
           </Card>
@@ -342,13 +348,13 @@ export default function MarketDetailPage({
                   {amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && (() => {
                     const amt = parseFloat(amount);
                     const price = tab === "buy-yes" ? yesPrice : noPrice;
-                    const validPrice = price >= 0.001 && price <= 0.999;
+                    const validPrice = price !== null && price >= 0.001 && price <= 0.999;
                     const shares = validPrice ? amt / price : null;
                     return (
                       <div className="text-xs border border-border rounded-lg p-3 flex flex-col gap-1.5">
                         <div className="flex justify-between text-muted">
                           <span>Odds</span>
-                          <span>{formatPercent(price)}</span>
+                          <span>{price !== null ? formatPercent(price) : "—"}</span>
                         </div>
                         <div className="flex justify-between text-muted">
                           <span>Est. shares</span>
@@ -361,6 +367,11 @@ export default function MarketDetailPage({
                             {shares !== null ? formatGENAmount(shares) : "—"}
                           </span>
                         </div>
+                        {price === null && (
+                          <div className="text-[11px] text-muted">
+                            No live odds yet. This market needs its first liquidity.
+                          </div>
+                        )}
                         {shares !== null && shares > amt && (
                           <div className="flex justify-between text-[11px] text-muted">
                             <span>Net profit if correct</span>

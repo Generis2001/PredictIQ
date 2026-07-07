@@ -26,7 +26,7 @@ function PositionRow({
   const yesPrice = calcYesPrice(market.yes_pool, market.no_pool);
   const noPrice = calcNoPrice(market.yes_pool, market.no_pool);
   const estValue =
-    position.yes_shares * yesPrice + position.no_shares * noPrice;
+    position.yes_shares * (yesPrice ?? 0) + position.no_shares * (noPrice ?? 0);
 
   const isWinner =
     market.resolved &&
@@ -60,14 +60,14 @@ function PositionRow({
           <div className="text-center">
             <div className="text-muted">YES Shares</div>
             <div className="text-yes font-bold">{position.yes_shares}</div>
-            <div className="text-muted">{formatPercent(yesPrice)} ea</div>
+            <div className="text-muted">{yesPrice !== null ? formatPercent(yesPrice) : "—"} ea</div>
           </div>
         )}
         {position.no_shares > 0 && (
           <div className="text-center">
             <div className="text-muted">NO Shares</div>
             <div className="text-no font-bold">{position.no_shares}</div>
-            <div className="text-muted">{formatPercent(noPrice)} ea</div>
+            <div className="text-muted">{noPrice !== null ? formatPercent(noPrice) : "—"} ea</div>
           </div>
         )}
         <div className="text-center">

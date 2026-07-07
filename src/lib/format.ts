@@ -29,19 +29,32 @@ export function formatTimeRemaining(deadline: number): string {
   return `${hours}h ${minutes}m`;
 }
 
-export function calcYesPrice(yesPool: number | string, noPool: number | string): number {
+function getPoolTotal(yesPool: number | string, noPool: number | string): number | null {
   const y = Number(yesPool);
   const n = Number(noPool);
   const total = y + n;
-  if (!isFinite(total) || total === 0) return 0.5;
+  if (!isFinite(total)) return null;
+  return total;
+}
+
+export function hasMarketLiquidity(yesPool: number | string, noPool: number | string): boolean {
+  const total = getPoolTotal(yesPool, noPool);
+  return total !== null && total > 0;
+}
+
+export function calcYesPrice(yesPool: number | string, noPool: number | string): number | null {
+  const y = Number(yesPool);
+  const n = Number(noPool);
+  const total = getPoolTotal(y, n);
+  if (total === null || total === 0) return null;
   return n / total;
 }
 
-export function calcNoPrice(yesPool: number | string, noPool: number | string): number {
+export function calcNoPrice(yesPool: number | string, noPool: number | string): number | null {
   const y = Number(yesPool);
   const n = Number(noPool);
-  const total = y + n;
-  if (!isFinite(total) || total === 0) return 0.5;
+  const total = getPoolTotal(y, n);
+  if (total === null || total === 0) return null;
   return y / total;
 }
 
