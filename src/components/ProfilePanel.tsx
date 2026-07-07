@@ -54,13 +54,16 @@ export default function ProfilePanel() {
 
   return (
     <div
-      className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex"
+      className="fixed right-0 top-1/2 -translate-y-1/2 z-40"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      {/* Collapsed tab — always visible */}
-      <div
-        className="flex flex-col items-center justify-center gap-2 w-7 cursor-pointer"
+      <button
+        type="button"
+        aria-label={open ? "Close profile panel" : "Open profile panel"}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="relative z-10 flex flex-col items-center justify-center gap-2 w-7 cursor-pointer"
         style={{
           background: "#171719",
           borderLeft: "1px solid #2e2e33",
@@ -86,14 +89,14 @@ export default function ProfilePanel() {
         >
           Profile
         </span>
-      </div>
+      </button>
 
-      {/* Expanded panel */}
       <div
+        aria-hidden={!open}
         style={{
           width: 260,
           maxHeight: "80vh",
-          transform: open ? "translateX(0)" : "translateX(100%)",
+          transform: open ? "translate(0, -50%)" : "translate(calc(100% + 1.75rem), -50%)",
           transition: "transform 0.2s cubic-bezier(0.4,0,0.2,1)",
           background: "#171719",
           borderLeft: "1px solid #2e2e33",
@@ -103,9 +106,8 @@ export default function ProfilePanel() {
           boxShadow: "-4px 0 24px rgba(0,0,0,0.5)",
           overflowY: "auto",
         }}
-        className="flex flex-col gap-4 p-5"
+        className="absolute right-7 top-1/2 flex flex-col gap-4 p-5"
       >
-        {/* Avatar + identity */}
         <div className="flex items-center gap-3">
           <Avatar src={profile.avatar_url} username={profile.username} size={48} />
           <div className="flex flex-col min-w-0">
@@ -118,14 +120,12 @@ export default function ProfilePanel() {
           </div>
         </div>
 
-        {/* Bio */}
         {profile.bio && (
           <p className="text-xs leading-relaxed" style={{ color: "#a0a0aa" }}>
             {profile.bio.length > 140 ? profile.bio.slice(0, 140) + "…" : profile.bio}
           </p>
         )}
 
-        {/* Twitter */}
         {profile.twitter_handle && (
           <a
             href={`https://x.com/${profile.twitter_handle}`}
@@ -137,10 +137,8 @@ export default function ProfilePanel() {
           </a>
         )}
 
-        {/* Divider */}
         <div className="border-t border-border" />
 
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-surface-2 border border-border">
             <span className="text-[10px] text-muted uppercase tracking-wider">Markets</span>
@@ -152,7 +150,6 @@ export default function ProfilePanel() {
           </div>
         </div>
 
-        {/* Link */}
         <Link
           href="/profile"
           className="text-xs text-center py-2 rounded-lg border border-border text-muted hover:text-foreground hover:border-muted transition-colors mt-auto"

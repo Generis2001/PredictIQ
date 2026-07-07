@@ -3,7 +3,7 @@ import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Providers from "@/components/Providers";
-import ProfilePanel from "@/components/ProfilePanel";
+import AppProfilePanel from "@/components/AppProfilePanel";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={playfair.variable}>
         <Providers>
           <Navigation />
-          <ProfilePanel />
+          <AppProfilePanel />
           <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
           <footer className="border-t border-border mt-16 py-8 text-center text-xs text-muted">
             <p>
