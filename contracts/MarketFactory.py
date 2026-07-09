@@ -1,6 +1,7 @@
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 from genlayer import *
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 
 @allow_storage
@@ -32,6 +33,7 @@ class Position:
 
 
 class MarketFactory(gl.Contract):
+    owner: str
     resolver_address: str
     markets: TreeMap[u256, Market]
     market_count: u256
@@ -43,7 +45,8 @@ class MarketFactory(gl.Contract):
     user_market_ids: TreeMap[str, DynArray[u256]]
 
     def __init__(self, resolver_address: str) -> None:
-        self.resolver_address = resolver_address
+        self.owner = str(gl.message.sender_address).lower()
+        self.resolver_address = resolver_address.lower()
         self.market_count = u256(0)
         self.trader_count = u256(0)
 
@@ -58,11 +61,12 @@ class MarketFactory(gl.Contract):
     ) -> u256:
         assert len(question) >= 10, "Question too short"
         assert len(resolution_criteria) >= 20, "Resolution criteria too short"
+        assert int(deadline) > self._current_timestamp(), "Deadline must be in the future"
 
         # LLM validates the market is a well-formed binary prediction; validators
         # must reach comparative-judgment consensus before the market is stored
-        def validate_market() -> str:
-            return gl.exec_prompt(
+        def validate_market() -> dict:
+            result = gl.nondet.exec_prompt(
                 f"You are a prediction market validator. Determine whether the following "
                 f"is a valid binary (YES/NO) prediction market.\n\n"
                 f"Question: {question}\n"
@@ -71,15 +75,20 @@ class MarketFactory(gl.Contract):
                 f"1. Be a clear, unambiguous YES or NO question\n"
                 f"2. Have specific, objectively verifiable resolution criteria\n"
                 f"3. Not be harmful, offensive, or impossible to resolve\n\n"
-                f"Respond with only VALID or INVALID.",
-                return_type=str,
+                f"Respond as JSON with:\n"
+                f'- "verdict": "VALID" or "INVALID"\n'
+                f'- "reason": one short sentence\n',
+                response_format="json",
             )
+            assert isinstance(result, dict), "Validator response must be JSON"
+            return result
 
-        validation = gl.eq_principle_prompt_comparative_judgment(
+        validation = gl.eq_principle.prompt_comparative(
             validate_market,
-            "The outputs are equivalent if they both say VALID or both say INVALID.",
+            principle="The `verdict` field must match exactly as VALID or INVALID. "
+            "The `reason` field may use different wording but must support the same verdict.",
         )
-        verdict = self._normalize_label(validation)
+        verdict = self._normalize_label(str(validation.get("verdict", "")))
         assert verdict == "VALID", "Market rejected: question or criteria not suitable"
 
         mid = self.market_count
@@ -97,7 +106,7 @@ class MarketFactory(gl.Contract):
             no_pool=liq // u256(2),
             total_volume=liq,
             sources=sources,
-            created_at=u256(0),
+            created_at=u256(self._current_timestamp()),
         )
         self.markets[mid] = market
         self.all_market_ids.append(mid)
@@ -112,6 +121,7 @@ class MarketFactory(gl.Contract):
         market = self.markets.get(market_id)
         assert market is not None, "Market not found"
         assert not market.resolved, "Market already resolved"
+        assert int(market.deadline) > self._current_timestamp(), "Market expired"
 
         yes_pool = market.yes_pool
         no_pool = market.no_pool
@@ -133,6 +143,7 @@ class MarketFactory(gl.Contract):
         market = self.markets.get(market_id)
         assert market is not None, "Market not found"
         assert not market.resolved, "Market already resolved"
+        assert int(market.deadline) > self._current_timestamp(), "Market expired"
 
         yes_pool = market.yes_pool
         no_pool = market.no_pool
@@ -155,6 +166,7 @@ class MarketFactory(gl.Contract):
         market = self.markets.get(market_id)
         assert market is not None, "Market not found"
         assert not market.resolved, "Market already resolved"
+        assert int(market.deadline) > self._current_timestamp(), "Market expired"
 
         yes_pool = market.yes_pool
         no_pool = market.no_pool
@@ -178,6 +190,7 @@ class MarketFactory(gl.Contract):
         market = self.markets.get(market_id)
         assert market is not None, "Market not found"
         assert not market.resolved, "Market already resolved"
+        assert int(market.deadline) > self._current_timestamp(), "Market expired"
 
         yes_pool = market.yes_pool
         no_pool = market.no_pool
@@ -223,7 +236,7 @@ class MarketFactory(gl.Contract):
     @gl.public.write
     def set_resolver(self, new_resolver: str) -> None:
         sender = str(gl.message.sender_address).lower()
-        assert sender == self.resolver_address.lower(), "Unauthorized"
+        assert sender == self.owner, "Unauthorized"
         self.resolver_address = new_resolver.lower()
 
     @gl.public.write
@@ -418,3 +431,8 @@ class MarketFactory(gl.Contract):
         first_line = normalized.split("\n")[0]
         first_token = first_line.split(" ")[0]
         return first_token
+
+    def _current_timestamp(self) -> int:
+        if hasattr(gl.message, "timestamp"):
+            return int(gl.message.timestamp)
+        return int(datetime.now(timezone.utc).timestamp())
